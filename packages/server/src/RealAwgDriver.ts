@@ -1,5 +1,6 @@
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
+import { readFile } from 'node:fs/promises';
 
 import type {
     AwgDriver,
@@ -187,10 +188,35 @@ export class RealAwgDriver implements AwgDriver {
 
         const persistentKeepalive =
             process.env.AWG_PERSISTENT_KEEPALIVE ?? '25';
+        const headerProtectionKeyFile =
+            process.env.AWG_HEADER_PROTECTION_KEY_FILE
+            ?? '/data/header-protection.key';
 
+        const headerProtectionKey = (
+            await readFile(headerProtectionKeyFile, 'utf8')
+        ).trim();
         const config = `[Interface]
 PrivateKey = ${privateKey}
 Address = ${options.address}/24
+Jc = 4
+Jmin = 10
+Jmax = 50
+S1 = 12
+S2 = 12
+S3 = 12
+S4 = 12
+H1 = 1
+H2 = 2
+H3 = 3
+H4 = 4
+HeaderProtectionKey = ${headerProtectionKey}
+RekeyAfterTime = 100-120
+RekeyTimeout = 3-7
+RejectAfterTime = 150-180
+KeepaliveTimeout = 5-15
+MaxHandshakeAttempts = 15-20
+RandomTrailers = on
+DisableCookies = on
 
 [Peer]
 PublicKey = ${serverPublicKey}
