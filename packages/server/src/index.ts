@@ -10,6 +10,7 @@ const app = new Hono();
 const awg = createAwgDriver();
 const metadata = new FilePeerMetadataStore();
 const peers = new PeerService(awg, metadata);
+await peers.restorePeers();
 
 app.get('/', (c) => {
     return c.json({

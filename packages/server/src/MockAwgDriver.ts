@@ -4,6 +4,7 @@ import type {
     AwgDriver,
     CreatedPeer,
     CreatePeerOptions,
+    EnsurePeerOptions,
     PeerStatus,
 } from './awg.js';
 
@@ -44,4 +45,6 @@ export class MockAwgDriver implements AwgDriver {
             privateKey: `mock-private-${randomUUID()}`,
         };
     }
+
+    async ensurePeer(_options: EnsurePeerOptions): Promise<void> {}
 }

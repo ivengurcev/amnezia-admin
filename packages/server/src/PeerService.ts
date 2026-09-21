@@ -68,4 +68,15 @@ export class PeerService {
 
         return peer;
     }
+
+    async restorePeers(): Promise<void> {
+        const metadata = await this.metadata.list();
+
+        for (const peer of metadata) {
+            await this.awg.ensurePeer({
+                publicKey: peer.publicKey,
+                address: peer.address,
+            });
+        }
+    }
 }

@@ -5,6 +5,7 @@ import type {
     AwgDriver,
     CreatedPeer,
     CreatePeerOptions,
+    EnsurePeerOptions,
     PeerStatus,
 } from './awg.js';
 
@@ -168,5 +169,22 @@ export class RealAwgDriver implements AwgDriver {
             publicKey,
             privateKey,
         };
+    }
+
+    async ensurePeer(options: EnsurePeerOptions): Promise<void> {
+        await execFileAsync(
+            this.binary,
+            [
+                'set',
+                this.interfaceName,
+                'peer',
+                options.publicKey,
+                'allowed-ips',
+                `${options.address}/32`,
+            ],
+            {
+                encoding: 'utf8',
+            },
+        );
     }
 }

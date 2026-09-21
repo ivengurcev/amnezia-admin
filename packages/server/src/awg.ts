@@ -21,8 +21,14 @@ export type CreatedPeer = {
     privateKey: string;
 };
 
+export type EnsurePeerOptions = {
+    publicKey: string;
+    address: string;
+};
+
 export interface AwgDriver {
     getRawStatus(): Promise<string>;
     listPeers(): Promise<PeerStatus[]>;
     createPeer(options: CreatePeerOptions): Promise<CreatedPeer>;
+    ensurePeer(options: EnsurePeerOptions): Promise<void>;
 }
