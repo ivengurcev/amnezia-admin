@@ -14,6 +14,27 @@ services:
             AWG_ENDPOINT_HOST: amnezia-admin
             AWG_CLIENT_ALLOWED_IPS: 10.90.0.0/24
             AWG_PERSISTENT_KEEPALIVE: 25
+            AWG_JC: 4
+            AWG_JMIN: 10
+            AWG_JMAX: 50
+            AWG_S1: 12
+            AWG_S2: 12
+            AWG_S3: 12
+            AWG_S4: 12
+            AWG_H1: 1
+            AWG_H2: 2
+            AWG_H3: 3
+            AWG_H4: 4
+
+            AWG_REKEY_AFTER_TIME: 100-120
+            AWG_REKEY_TIMEOUT: 3-7
+            AWG_REJECT_AFTER_TIME: 150-180
+            AWG_KEEPALIVE_TIMEOUT: 5-15
+            AWG_MAX_HANDSHAKE_ATTEMPTS: 15-20
+            AWG_RANDOM_TRAILERS: "on"
+            AWG_DISABLE_COOKIES: "on"
+
+            AWG_HEADER_PROTECTION_KEY_FILE: /data/header-protection.key
 
         cap_add:
             - NET_ADMIN

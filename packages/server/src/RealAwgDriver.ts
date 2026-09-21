@@ -195,28 +195,62 @@ export class RealAwgDriver implements AwgDriver {
         const headerProtectionKey = (
             await readFile(headerProtectionKeyFile, 'utf8')
         ).trim();
+        const jc = process.env.AWG_JC ?? '4';
+        const jmin = process.env.AWG_JMIN ?? '10';
+        const jmax = process.env.AWG_JMAX ?? '50';
+
+        const s1 = process.env.AWG_S1 ?? '12';
+        const s2 = process.env.AWG_S2 ?? '12';
+        const s3 = process.env.AWG_S3 ?? '12';
+        const s4 = process.env.AWG_S4 ?? '12';
+
+        const h1 = process.env.AWG_H1 ?? '1';
+        const h2 = process.env.AWG_H2 ?? '2';
+        const h3 = process.env.AWG_H3 ?? '3';
+        const h4 = process.env.AWG_H4 ?? '4';
+
+        const rekeyAfterTime =
+            process.env.AWG_REKEY_AFTER_TIME ?? '100-120';
+
+        const rekeyTimeout =
+            process.env.AWG_REKEY_TIMEOUT ?? '3-7';
+
+        const rejectAfterTime =
+            process.env.AWG_REJECT_AFTER_TIME ?? '150-180';
+
+        const keepaliveTimeout =
+            process.env.AWG_KEEPALIVE_TIMEOUT ?? '5-15';
+
+        const maxHandshakeAttempts =
+            process.env.AWG_MAX_HANDSHAKE_ATTEMPTS ?? '15-20';
+
+        const randomTrailers =
+            process.env.AWG_RANDOM_TRAILERS ?? 'on';
+
+        const disableCookies =
+            process.env.AWG_DISABLE_COOKIES ?? 'on';        
         const config = `[Interface]
 PrivateKey = ${privateKey}
 Address = ${options.address}/24
-Jc = 4
-Jmin = 10
-Jmax = 50
-S1 = 12
-S2 = 12
-S3 = 12
-S4 = 12
-H1 = 1
-H2 = 2
-H3 = 3
-H4 = 4
+Jc = ${jc}
+Jmin = ${jmin}
+Jmax = ${jmax}
+S1 = ${s1}
+S2 = ${s2}
+S3 = ${s3}
+S4 = ${s4}
+H1 = ${h1}
+H2 = ${h2}
+H3 = ${h3}
+H4 = ${h4}
 HeaderProtectionKey = ${headerProtectionKey}
-RekeyAfterTime = 100-120
-RekeyTimeout = 3-7
-RejectAfterTime = 150-180
-KeepaliveTimeout = 5-15
-MaxHandshakeAttempts = 15-20
-RandomTrailers = on
-DisableCookies = on
+RekeyAfterTime = ${rekeyAfterTime}
+RekeyTimeout = ${rekeyTimeout}
+RejectAfterTime = ${rejectAfterTime}
+KeepaliveTimeout = ${keepaliveTimeout}
+MaxHandshakeAttempts = ${maxHandshakeAttempts}
+RandomTrailers = ${randomTrailers}
+DisableCookies = ${disableCookies}
 
 [Peer]
 PublicKey = ${serverPublicKey}
