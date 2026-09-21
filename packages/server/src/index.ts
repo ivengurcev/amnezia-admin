@@ -52,10 +52,31 @@ app.post('/api/peers', async (c) => {
     return c.json(peer, 201);
 });
 
-app.delete('/api/peers/:publicKey', async (c) => {
-    const publicKey = c.req.param('publicKey');
+app.delete('/api/peers/:id', async (c) => {
+    const id = c.req.param('id');
 
-    await peers.removePeer(publicKey);
+    await peers.removePeer(id);
+
+    return c.body(null, 204);
+});
+
+app.patch('/api/peers/:id', async (c) => {
+    const id = c.req.param('id');
+
+    const body = await c.req.json<{
+        name?: string;
+    }>();
+
+    if (!body.name) {
+        return c.json(
+            {
+                error: 'name is required',
+            },
+            400,
+        );
+    }
+
+    await peers.renamePeer(id, body.name);
 
     return c.body(null, 204);
 });

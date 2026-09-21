@@ -1,5 +1,6 @@
 export type PeerStatus = {
-    id: string;
+    id: string | null;
+    publicKey: string;
     name: string;
     address: string;
     connected: boolean;

@@ -1,4 +1,5 @@
 export type PeerMetadata = {
+    id: string;
     publicKey: string;
     name: string;
     address: string;
@@ -6,8 +7,9 @@ export type PeerMetadata = {
 };
 
 export interface PeerMetadataStore {
-    get(publicKey: string): Promise<PeerMetadata | null>;
+    getById(id: string): Promise<PeerMetadata | null>;
+    getByPublicKey(publicKey: string): Promise<PeerMetadata | null>;
     list(): Promise<PeerMetadata[]>;
     save(metadata: PeerMetadata): Promise<void>;
-    remove(publicKey: string): Promise<void>;
+    removeById(id: string): Promise<void>;
 }

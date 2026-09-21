@@ -6,15 +6,28 @@ import type {
     PeerMetadataStore,
 } from './peerMetadata.js';
 
+import { randomUUID } from 'node:crypto';
+
 export class FilePeerMetadataStore implements PeerMetadataStore {
     constructor(
         private readonly filePath = '/data/peers.json',
     ) {}
 
-    async get(publicKey: string): Promise<PeerMetadata | null> {
+    async getById(id: string): Promise<PeerMetadata | null> {
         const items = await this.readAll();
 
-        return items.find((item) => item.publicKey === publicKey) ?? null;
+        return items.find((item) => item.id === id) ?? null;
+    }
+
+    async getByPublicKey(
+        publicKey: string,
+    ): Promise<PeerMetadata | null> {
+        const items = await this.readAll();
+
+        return (
+            items.find((item) => item.publicKey === publicKey) ??
+            null
+        );
     }
 
     async list(): Promise<PeerMetadata[]> {
@@ -25,7 +38,7 @@ export class FilePeerMetadataStore implements PeerMetadataStore {
         const items = await this.readAll();
 
         const index = items.findIndex(
-            (item) => item.publicKey === metadata.publicKey,
+            (item) => item.id === metadata.id,
         );
 
         if (index === -1) {
@@ -37,11 +50,11 @@ export class FilePeerMetadataStore implements PeerMetadataStore {
         await this.writeAll(items);
     }
 
-    async remove(publicKey: string): Promise<void> {
+    async removeById(id: string): Promise<void> {
         const items = await this.readAll();
 
         await this.writeAll(
-            items.filter((item) => item.publicKey !== publicKey),
+            items.filter((item) => item.id !== id),
         );
     }
 
@@ -52,10 +65,28 @@ export class FilePeerMetadataStore implements PeerMetadataStore {
             const data: unknown = JSON.parse(content);
 
             if (!Array.isArray(data)) {
-                throw new Error('Peer metadata file must contain an array');
+                throw new Error(
+                    'Peer metadata file must contain an array',
+                );
             }
 
-            return data as PeerMetadata[];
+            const items = data as PeerMetadata[];
+
+            let changed = false;
+
+            for (const item of items) {
+                if (!item.id) {
+                    item.id = randomUUID();
+                    changed = true;
+                }
+            }
+
+            if (changed) {
+                await this.writeAll(items);
+            }
+
+            return items;
+            
         } catch (error) {
             if (
                 error instanceof Error &&
@@ -69,7 +100,9 @@ export class FilePeerMetadataStore implements PeerMetadataStore {
         }
     }
 
-    private async writeAll(items: PeerMetadata[]): Promise<void> {
+    private async writeAll(
+        items: PeerMetadata[],
+    ): Promise<void> {
         await mkdir(dirname(this.filePath), {
             recursive: true,
         });

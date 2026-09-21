@@ -112,7 +112,8 @@ export class RealAwgDriver implements AwgDriver {
                     ?.split('/')[0] ?? '';
 
             return {
-                id: publicKey,
+                id: null,
+                publicKey,
                 name: address,
                 address,
                 connected,

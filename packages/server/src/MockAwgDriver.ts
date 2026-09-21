@@ -17,6 +17,7 @@ export class MockAwgDriver implements AwgDriver {
         return [
             {
                 id: 'peer-1',
+                publicKey: 'mock-public-peer-1',
                 name: 'Ivan Phone',
                 address: '10.90.0.2',
                 connected: true,
@@ -26,6 +27,7 @@ export class MockAwgDriver implements AwgDriver {
             },
             {
                 id: 'peer-2',
+                publicKey: 'mock-public-peer-2',
                 name: 'Laptop',
                 address: '10.90.0.3',
                 connected: false,

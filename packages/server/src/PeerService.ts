@@ -10,6 +10,8 @@ import type {
     PeerMetadataStore,
 } from './peerMetadata.js';
 
+import { randomUUID } from 'node:crypto';
+
 type CreatePeerOptions = {
     name: string;
 };
@@ -32,7 +34,7 @@ export class PeerService {
         );
 
         return peers.map((peer) => {
-            const item = metadataByKey.get(peer.id);
+            const item = metadataByKey.get(peer.publicKey);
 
             if (!item) {
                 return peer;
@@ -40,6 +42,7 @@ export class PeerService {
 
             return {
                 ...peer,
+                id: item.id,
                 name: item.name,
             };
         });
@@ -60,6 +63,7 @@ export class PeerService {
         });
 
         await this.metadata.save({
+            id: randomUUID(),
             publicKey: peer.publicKey,
             name: peer.name,
             address: peer.address,
@@ -80,8 +84,27 @@ export class PeerService {
         }
     }
 
-    async removePeer(publicKey: string): Promise<void> {
-        await this.awg.removePeer(publicKey);
-        await this.metadata.remove(publicKey);
+    async removePeer(id: string): Promise<void> {
+        const metadata = await this.metadata.getById(id);
+
+        if (!metadata) {
+            throw new Error(`Peer not found: ${id}`);
+        }
+
+        await this.awg.removePeer(metadata.publicKey);
+        await this.metadata.removeById(id);
+    }
+
+    async renamePeer(id: string, name: string): Promise<void> {
+        const metadata = await this.metadata.getById(id);
+
+        if (!metadata) {
+            throw new Error(`Peer not found: ${id}`);
+        }
+
+        await this.metadata.save({
+            ...metadata,
+            name,
+        });
     }
 }
