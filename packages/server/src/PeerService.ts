@@ -16,6 +16,13 @@ type CreatePeerOptions = {
     name: string;
 };
 
+export class PeerNotFoundError extends Error {
+    constructor(id: string) {
+        super(`Peer not found: ${id}`);
+        this.name = 'PeerNotFoundError';
+    }
+}
+
 export class PeerService {
     constructor(
         private readonly awg: AwgDriver,
@@ -93,7 +100,7 @@ export class PeerService {
         const metadata = await this.metadata.getById(id);
 
         if (!metadata) {
-            throw new Error(`Peer not found: ${id}`);
+            throw new PeerNotFoundError(id);
         }
 
         await this.awg.removePeer(metadata.publicKey);
@@ -104,7 +111,7 @@ export class PeerService {
         const metadata = await this.metadata.getById(id);
 
         if (!metadata) {
-            throw new Error(`Peer not found: ${id}`);
+            throw new PeerNotFoundError(id);
         }
 
         await this.metadata.save({

@@ -3,7 +3,10 @@ import { Hono } from 'hono';
 
 import { createAwgDriver } from './createAwgDriver.js';
 import { FilePeerMetadataStore } from './FilePeerMetadataStore.js';
-import { PeerService } from './PeerService.js';
+import {
+    PeerNotFoundError,
+    PeerService,
+} from './PeerService.js';
 
 const app = new Hono();
 
@@ -11,6 +14,20 @@ const awg = createAwgDriver();
 const metadata = new FilePeerMetadataStore();
 const peers = new PeerService(awg, metadata);
 await peers.restorePeers();
+
+function normalizePeerName(name: unknown): string | null {
+    if (typeof name !== 'string') {
+        return null;
+    }
+
+    const normalized = name.trim();
+
+    if (normalized.length === 0 || normalized.length > 100) {
+        return null;
+    }
+
+    return normalized;
+}
 
 app.get('/', (c) => {
     return c.json({
@@ -32,22 +49,31 @@ app.get('/api/peers', async (c) => {
 });
 
 app.post('/api/peers', async (c) => {
-    const body = await c.req.json<{
-        name?: string;
-    }>();
+    let body: { name?: string };
 
-    if (!body.name) {
+    try {
+        body = await c.req.json<{ name?: string }>();
+    } catch {
         return c.json(
             {
-                error: 'name is required',
+                error: 'invalid JSON',
             },
             400,
         );
     }
 
-    const peer = await peers.createPeer({
-        name: body.name,
-    });
+    const name = normalizePeerName(body.name);
+
+    if (!name) {
+        return c.json(
+            {
+                error: 'name must be between 1 and 100 characters',
+            },
+            400,
+        );
+    }
+
+    const peer = await peers.createPeer({ name });
 
     return c.json(peer, 201);
 });
@@ -63,22 +89,53 @@ app.delete('/api/peers/:id', async (c) => {
 app.patch('/api/peers/:id', async (c) => {
     const id = c.req.param('id');
 
-    const body = await c.req.json<{
-        name?: string;
-    }>();
+    let body: { name?: string };
 
-    if (!body.name) {
+    try {
+        body = await c.req.json<{ name?: string }>();
+    } catch {
         return c.json(
             {
-                error: 'name is required',
+                error: 'invalid JSON',
             },
             400,
         );
     }
 
-    await peers.renamePeer(id, body.name);
+    const name = normalizePeerName(body.name);
+
+    if (!name) {
+        return c.json(
+            {
+                error: 'name must be between 1 and 100 characters',
+            },
+            400,
+        );
+    }
+
+    await peers.renamePeer(id, name);
 
     return c.body(null, 204);
+});
+
+app.onError((error, c) => {
+    if (error instanceof PeerNotFoundError) {
+        return c.json(
+            {
+                error: error.message,
+            },
+            404,
+        );
+    }
+
+    console.error(error);
+
+    return c.json(
+        {
+            error: 'Internal Server Error',
+        },
+        500,
+    );
 });
 
 serve({
