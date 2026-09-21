@@ -79,4 +79,9 @@ export class PeerService {
             });
         }
     }
+
+    async removePeer(publicKey: string): Promise<void> {
+        await this.awg.removePeer(publicKey);
+        await this.metadata.remove(publicKey);
+    }
 }

@@ -52,6 +52,14 @@ app.post('/api/peers', async (c) => {
     return c.json(peer, 201);
 });
 
+app.delete('/api/peers/:publicKey', async (c) => {
+    const publicKey = c.req.param('publicKey');
+
+    await peers.removePeer(publicKey);
+
+    return c.body(null, 204);
+});
+
 serve({
     fetch: app.fetch,
     port: 3000,

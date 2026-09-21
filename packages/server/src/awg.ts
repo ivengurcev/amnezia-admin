@@ -31,4 +31,5 @@ export interface AwgDriver {
     listPeers(): Promise<PeerStatus[]>;
     createPeer(options: CreatePeerOptions): Promise<CreatedPeer>;
     ensurePeer(options: EnsurePeerOptions): Promise<void>;
+    removePeer(publicKey: string): Promise<void>;
 }

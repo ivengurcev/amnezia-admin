@@ -187,4 +187,20 @@ export class RealAwgDriver implements AwgDriver {
             },
         );
     }
+
+    async removePeer(publicKey: string): Promise<void> {
+        await execFileAsync(
+            this.binary,
+            [
+                'set',
+                this.interfaceName,
+                'peer',
+                publicKey,
+                'remove',
+            ],
+            {
+                encoding: 'utf8',
+            },
+        );
+    }
 }

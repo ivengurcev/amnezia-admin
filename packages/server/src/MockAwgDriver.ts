@@ -47,4 +47,6 @@ export class MockAwgDriver implements AwgDriver {
     }
 
     async ensurePeer(_options: EnsurePeerOptions): Promise<void> {}
+
+    async removePeer(_publicKey: string): Promise<void> {}
 }
