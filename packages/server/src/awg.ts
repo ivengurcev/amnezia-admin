@@ -8,6 +8,21 @@ export type PeerStatus = {
     txBytes: number;
 };
 
+export type CreatePeerOptions = {
+    name: string;
+    address: string;
+};
+
+export type CreatedPeer = {
+    id: string;
+    name: string;
+    address: string;
+    publicKey: string;
+    privateKey: string;
+};
+
 export interface AwgDriver {
+    getRawStatus(): Promise<string>;
     listPeers(): Promise<PeerStatus[]>;
+    createPeer(options: CreatePeerOptions): Promise<CreatedPeer>;
 }

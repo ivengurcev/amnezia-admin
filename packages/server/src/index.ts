@@ -1,10 +1,15 @@
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 
-import { MockAwgDriver } from './MockAwgDriver.js';
+import { createAwgDriver } from './createAwgDriver.js';
+import { FilePeerMetadataStore } from './FilePeerMetadataStore.js';
+import { PeerService } from './PeerService.js';
 
 const app = new Hono();
-const awg = new MockAwgDriver();
+
+const awg = createAwgDriver();
+const metadata = new FilePeerMetadataStore();
+const peers = new PeerService(awg, metadata);
 
 app.get('/', (c) => {
     return c.json({
@@ -13,10 +18,39 @@ app.get('/', (c) => {
     });
 });
 
-app.get('/api/peers', async (c) => {
-    const peers = await awg.listPeers();
+app.get('/api/status', async (c) => {
+    const status = await awg.getRawStatus();
 
-    return c.json(peers);
+    return c.json({
+        status,
+    });
+});
+
+app.get('/api/peers', async (c) => {
+    return c.json(await peers.listPeers());
+});
+
+app.post('/api/peers', async (c) => {
+    const body = await c.req.json<{
+        name?: string;
+        address?: string;
+    }>();
+
+    if (!body.name || !body.address) {
+        return c.json(
+            {
+                error: 'name and address are required',
+            },
+            400,
+        );
+    }
+
+    const peer = await peers.createPeer({
+        name: body.name,
+        address: body.address,
+    });
+
+    return c.json(peer, 201);
 });
 
 serve({

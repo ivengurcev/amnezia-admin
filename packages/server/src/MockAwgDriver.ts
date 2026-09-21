@@ -1,6 +1,17 @@
-import type { AwgDriver, PeerStatus } from './awg.js';
+import { randomUUID } from 'node:crypto';
+
+import type {
+    AwgDriver,
+    CreatedPeer,
+    CreatePeerOptions,
+    PeerStatus,
+} from './awg.js';
 
 export class MockAwgDriver implements AwgDriver {
+    async getRawStatus(): Promise<string> {
+        return 'Mock AWG server is running';
+    }
+
     async listPeers(): Promise<PeerStatus[]> {
         return [
             {
@@ -22,5 +33,15 @@ export class MockAwgDriver implements AwgDriver {
                 txBytes: 0,
             },
         ];
+    }
+
+    async createPeer(options: CreatePeerOptions): Promise<CreatedPeer> {
+        return {
+            id: randomUUID(),
+            name: options.name,
+            address: options.address,
+            publicKey: `mock-public-${randomUUID()}`,
+            privateKey: `mock-private-${randomUUID()}`,
+        };
     }
 }

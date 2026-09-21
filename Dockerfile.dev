@@ -1,0 +1,32 @@
+FROM amneziavpn/amneziawg-go:3.1.20260828
+
+RUN apk add --no-cache \
+    nodejs \
+    npm \
+    && npm install -g corepack \
+    && corepack enable
+
+WORKDIR /app
+
+COPY package.json yarn.lock ./
+COPY packages/server/package.json packages/server/package.json
+
+RUN corepack prepare yarn@4.18.0 --activate \
+    && yarn install --immutable
+
+COPY packages/server packages/server
+COPY docker/entrypoint.dev.sh /usr/local/bin/entrypoint.dev.sh
+
+RUN chmod +x /usr/local/bin/entrypoint.dev.sh
+
+ENV AWG_DRIVER=real
+ENV AWG_INTERFACE=awg-test
+ENV AWG_ADDRESS=10.90.0.1/24
+ENV AWG_PORT=18443
+
+EXPOSE 3000
+EXPOSE 18443/udp
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.dev.sh"]
+
+CMD ["yarn", "workspace", "@amnezia-admin/server", "dev"]
