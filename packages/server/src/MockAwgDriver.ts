@@ -39,12 +39,26 @@ export class MockAwgDriver implements AwgDriver {
     }
 
     async createPeer(options: CreatePeerOptions): Promise<CreatedPeer> {
+        const id = randomUUID();
+        const publicKey = `mock-public-${randomUUID()}`;
+        const privateKey = `mock-private-${randomUUID()}`;
+
         return {
-            id: randomUUID(),
+            id,
             name: options.name,
             address: options.address,
-            publicKey: `mock-public-${randomUUID()}`,
-            privateKey: `mock-private-${randomUUID()}`,
+            publicKey,
+            privateKey,
+            config: `[Interface]
+PrivateKey = ${privateKey}
+Address = ${options.address}/24
+
+[Peer]
+PublicKey = mock-server-public-key
+Endpoint = localhost:18443
+AllowedIPs = 0.0.0.0/0
+PersistentKeepalive = 25
+`,
         };
     }
 

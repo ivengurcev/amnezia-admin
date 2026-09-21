@@ -11,6 +11,9 @@ services:
             AWG_INTERFACE: awg-test
             AWG_ADDRESS: 10.90.0.1/24
             AWG_PORT: 18443
+            AWG_ENDPOINT_HOST: amnezia-admin
+            AWG_CLIENT_ALLOWED_IPS: 10.90.0.0/24
+            AWG_PERSISTENT_KEEPALIVE: 25
 
         cap_add:
             - NET_ADMIN

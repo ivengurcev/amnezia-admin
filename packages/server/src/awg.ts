@@ -20,6 +20,7 @@ export type CreatedPeer = {
     address: string;
     publicKey: string;
     privateKey: string;
+    config: string;
 };
 
 export type EnsurePeerOptions = {

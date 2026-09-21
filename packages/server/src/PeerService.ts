@@ -62,15 +62,20 @@ export class PeerService {
             address,
         });
 
+        const id = randomUUID();
+
         await this.metadata.save({
-            id: randomUUID(),
+            id,
             publicKey: peer.publicKey,
             name: peer.name,
             address: peer.address,
             createdAt: new Date().toISOString(),
         });
 
-        return peer;
+        return {
+            ...peer,
+            id,
+        };
     }
 
     async restorePeers(): Promise<void> {

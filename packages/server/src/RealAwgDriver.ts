@@ -162,13 +162,49 @@ export class RealAwgDriver implements AwgDriver {
                 encoding: 'utf8',
             },
         );
+        const { stdout: serverPublicKeyRaw } = await execFileAsync(
+            this.binary,
+            [
+                'show',
+                this.interfaceName,
+                'public-key',
+            ],
+            {
+                encoding: 'utf8',
+            },
+        );
 
+        const serverPublicKey = serverPublicKeyRaw.trim();
+
+        const endpointHost =
+            process.env.AWG_ENDPOINT_HOST ?? 'localhost';
+
+        const endpointPort =
+            process.env.AWG_PORT ?? '18443';
+
+        const allowedIps =
+            process.env.AWG_CLIENT_ALLOWED_IPS ?? '0.0.0.0/0';
+
+        const persistentKeepalive =
+            process.env.AWG_PERSISTENT_KEEPALIVE ?? '25';
+
+        const config = `[Interface]
+PrivateKey = ${privateKey}
+Address = ${options.address}/24
+
+[Peer]
+PublicKey = ${serverPublicKey}
+Endpoint = ${endpointHost}:${endpointPort}
+AllowedIPs = ${allowedIps}
+PersistentKeepalive = ${persistentKeepalive}
+`;
         return {
             id: publicKey,
             name: options.name,
             address: options.address,
             publicKey,
             privateKey,
+            config,
         };
     }
 
