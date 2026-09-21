@@ -1,13 +1,18 @@
 import type {
     AwgDriver,
-    CreatePeerOptions,
     CreatedPeer,
     PeerStatus,
 } from './awg.js';
 
+import { getNextFreeAddress } from './ip.js';
+
 import type {
     PeerMetadataStore,
 } from './peerMetadata.js';
+
+type CreatePeerOptions = {
+    name: string;
+};
 
 export class PeerService {
     constructor(
@@ -43,7 +48,16 @@ export class PeerService {
     async createPeer(
         options: CreatePeerOptions,
     ): Promise<CreatedPeer> {
-        const peer = await this.awg.createPeer(options);
+        const currentPeers = await this.awg.listPeers();
+
+        const address = getNextFreeAddress(
+            currentPeers.map((peer) => peer.address),
+        );
+
+        const peer = await this.awg.createPeer({
+            name: options.name,
+            address,
+        });
 
         await this.metadata.save({
             publicKey: peer.publicKey,

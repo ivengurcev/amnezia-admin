@@ -33,13 +33,12 @@ app.get('/api/peers', async (c) => {
 app.post('/api/peers', async (c) => {
     const body = await c.req.json<{
         name?: string;
-        address?: string;
     }>();
 
-    if (!body.name || !body.address) {
+    if (!body.name) {
         return c.json(
             {
-                error: 'name and address are required',
+                error: 'name is required',
             },
             400,
         );
@@ -47,7 +46,6 @@ app.post('/api/peers', async (c) => {
 
     const peer = await peers.createPeer({
         name: body.name,
-        address: body.address,
     });
 
     return c.json(peer, 201);
