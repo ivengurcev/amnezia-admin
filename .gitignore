@@ -17,3 +17,5 @@ node_modules
 .pnp.*
 
 /packages/web/dist/
+/packages/server-cpp/build/
+/packages/server-cpp/.cache/
