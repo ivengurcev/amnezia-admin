@@ -1,6 +1,5 @@
 #include "AwgDriver.hpp"
 #include "process/ProcessRunner.hpp"
-#include <cstdint>
 #include <nlohmann/json.hpp>
 #include <sstream>
 #include <stdexcept>
@@ -77,8 +76,6 @@ std::string AwgDriver::getInterfaceCidr() const {
 
     std::string ip = data.at(0).at("addr_info").at(0).at("local").get<std::string>();
     int prefix = data.at(0).at("addr_info").at(0).at("prefixlen").get<int>();
-
-
 
     return ip + '/' + std::to_string(prefix) ;
 }

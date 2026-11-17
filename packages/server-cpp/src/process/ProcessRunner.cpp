@@ -1,6 +1,8 @@
 #include "ProcessRunner.hpp"
+#include <array>
 #include <cerrno>
 #include <csignal>
+#include <fcntl.h>
 #include <spawn.h>
 #include <stdexcept>
 #include <string>
@@ -8,6 +10,7 @@
 #include <sys/wait.h>
 #include <system_error>
 #include <unistd.h>
+#include <utility>
 
 extern char** environ;
 
@@ -119,46 +122,179 @@ void catchSpawnError(const int& posixResult, const std::string& message) {
 
 void setupFD(
     SpawnActions& actions, 
-    const UniqueFd& readFd, 
-    const UniqueFd& writeFd, 
+    const UniqueFd& fd1, 
+    const UniqueFd& fd2, 
     const int targetFd,
-    const std::string& textOut,
-    const std::string& textReadFd,
-    const std::string& textWriteFD
+    const std::string& pipeLabel,
+    const std::string& fd1Label,
+    const std::string& fd2Label
 ) {
     catchSpawnError(posix_spawn_file_actions_adddup2(
-        actions.get(), writeFd.get(), targetFd
-    ), "Не удалось перенаправить " + textOut);
+        actions.get(), fd2.get(), targetFd
+    ), "Не удалось перенаправить " + pipeLabel);
     catchSpawnError(
-        posix_spawn_file_actions_addclose(actions.get(), readFd.get()), 
-        "Не удалось настроить закрытие " + textReadFd
+        posix_spawn_file_actions_addclose(actions.get(), fd1.get()), 
+        "Не удалось настроить закрытие " + fd1Label
     );
     catchSpawnError(
-        posix_spawn_file_actions_addclose(actions.get(), writeFd.get()),
-        "Не удалось настроить закрытие " + textWriteFD
+        posix_spawn_file_actions_addclose(actions.get(), fd2.get()),
+        "Не удалось настроить закрытие " + fd2Label
     );    
 }
 
+std::array<UniqueFd, 2> createPipe() {
+    int fd[2];
+    if (pipe(fd) == -1) {
+        throw std::system_error{
+            errno, 
+            std::generic_category(), 
+            "Не удалось создать pipe"
+        };
+    }   
+    return {UniqueFd{fd[0]}, UniqueFd{fd[1]}};
+}
+
+std::array<std::string, 2> communicate(UniqueFd& fdOut, UniqueFd& fdError, UniqueFd& fdInput, const std::string& input) {
+    if (input.empty()) {
+        fdInput.reset();
+    }    
+    if (fdInput.get() >= 0) {
+        int flags = ::fcntl(fdInput.get(), F_GETFL);
+
+        if (flags == -1 || ::fcntl(fdInput.get(), F_SETFL, flags | O_NONBLOCK) == -1) {
+            throw std::system_error{
+                errno,
+                std::generic_category(),
+                "Не удалось настроить stdin"
+            };
+        }
+    }    
+    pollfd streams[3]{
+        {fdOut.get(), POLLIN, 0},
+        {fdError.get(), POLLIN, 0},
+        {fdInput.get(), POLLOUT, 0}
+    };
+
+    std::string output;
+    std::string errors;
+
+    int activeStreams = fdInput.get() >= 0 ? 3 : 2;
+    char buffer[256];
+    std::size_t written = 0;
+
+    while (activeStreams > 0) {
+        int ready = ::poll(streams, 3, -1);
+
+        if (ready == -1) {
+            if (errno == EINTR) {
+                continue;
+            }
+            throw std::system_error{
+                errno, std::generic_category(), "Ошибка poll"
+            };
+        }
+
+        for (int i = 0; i < 3; ++i) {
+            auto& stream = streams[i];
+
+            if (stream.fd == -1) {
+                continue;
+            }
+
+            if (stream.revents & POLLNVAL) {
+                throw std::runtime_error{"Недействительный дескриптор"};
+            }
+
+            if (i == 2) {
+                if (stream.revents & (POLLHUP | POLLERR)) {
+                    throw std::runtime_error{"Дочерний процесс закрыл stdin"};
+                }
+
+                if (!(stream.revents & POLLOUT)) {
+                    continue;
+                }
+
+                ssize_t count = ::write(
+                    stream.fd,
+                    input.data() + written,
+                    input.size() - written
+                );
+
+                if (count > 0) {
+                    written += count;
+                } else if (count == -1) {
+                    if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
+                        continue;
+                    }
+
+                    throw std::system_error{
+                        errno,
+                        std::generic_category(),
+                        "Ошибка записи в stdin"
+                    };
+                } else {
+                    throw std::runtime_error{"Не удалось записать данные в stdin"};
+                }
+
+                if (written == input.size()) {
+                    fdInput.reset();
+                    stream.fd = -1;
+                    --activeStreams;
+                }
+
+                continue;
+            }
+
+
+            if (!(stream.revents & (POLLIN | POLLHUP | POLLERR))) {
+                continue;
+            }
+
+            ssize_t count = ::read(stream.fd, buffer, sizeof(buffer));
+
+            if (count > 0) {
+                if (i == 0) {
+                    output.append(buffer, count);
+                } else {
+                    errors.append(buffer, count);
+                }
+            } else if (count == 0) {
+                if (i == 0) {
+                    fdOut.reset();
+                } else {
+                    fdError.reset();
+                }
+
+                stream.fd = -1;
+                --activeStreams;
+            } else {
+                if (errno == EINTR) {
+                    continue;
+                }
+                throw std::system_error{
+                    errno, std::generic_category(), "Ошибка чтения pipe"
+                };
+            }
+        }
+    }
+    return {output, errors};
+}
+
 namespace process {
-    std::string runCommand(const std::string& program, const std::vector<std::string>& args) {
-        int fd[2];
-        if (pipe(fd) == -1) {
-            throw std::runtime_error{"Не удалось создать pipe"};
-        }
-
-        UniqueFd readFd{fd[0]};
-        UniqueFd writeFd{fd[1]};
-
-        int errorFd[2];
-        if (::pipe(errorFd) == -1) {
-            throw std::runtime_error{"Не удалось создать stderr pipe"};
-        }
-
-        UniqueFd errorRead{errorFd[0]};
-        UniqueFd errorWrite{errorFd[1]};     
-
-
+    std::string runCommand(
+        const std::string& program, 
+        const std::vector<std::string>& args,
+        const std::string& input
+    ) {
+        auto [outRead, outWrite] = createPipe();
+        auto [errorRead, errorWrite] = createPipe();
+        auto [inputRead, inputWrite] = createPipe();    // stdin
         // std::cout << "Pipe создан\n";
+        SpawnActions actions;
+
+        setupFD(actions, outRead, outWrite, STDOUT_FILENO, "stdout", "readFd", "writeFd");
+        setupFD(actions, errorRead, errorWrite, STDERR_FILENO, "stderr", "errorReadFd", "errorWriteFd");
+        setupFD(actions, inputWrite, inputRead, STDIN_FILENO, "stdin", "input write FD", "input read FD");
 
         std::vector<std::string> values;
         values.push_back(program);
@@ -169,11 +305,6 @@ namespace process {
             argv.push_back(value.data());
         }
         argv.push_back(nullptr);
-
-        SpawnActions actions;
-
-        setupFD(actions, readFd, writeFd, STDOUT_FILENO, "stdout", "readFd", "writeFd");
-        setupFD(actions, errorRead, errorWrite, STDERR_FILENO, "stderr", "errorReadFd", "errorWriteFd");
 
         pid_t pid{};
         int result = posix_spawnp(
@@ -191,74 +322,13 @@ namespace process {
 
         ChildProcess child{pid};
 
-        writeFd.reset();
+        inputRead.reset();
+        outWrite.reset();
         errorWrite.reset();
 
-        pollfd streams[2]{
-            {readFd.get(), POLLIN, 0},
-            {errorRead.get(), POLLIN, 0}
-        };
-        
-        std::string output;
-        std::string errors;
 
-        int activeStreams = 2;
-        char buffer[256];
+        auto [output, errors] = communicate(outRead, errorRead, inputWrite, input);
 
-        while (activeStreams > 0) {
-            int ready = ::poll(streams, 2, -1);
-
-            if (ready == -1) {
-                if (errno == EINTR) {
-                    continue;
-                }
-                throw std::system_error{
-                    errno, std::generic_category(), "Ошибка poll"
-                };
-            }
-
-            for (int i = 0; i < 2; ++i) {
-                auto& stream = streams[i];
-
-                if (stream.fd == -1) {
-                    continue;
-                }
-
-                if (stream.revents & POLLNVAL) {
-                    throw std::runtime_error{"Недействительный дескриптор"};
-                }
-
-                if (!(stream.revents & (POLLIN | POLLHUP | POLLERR))) {
-                    continue;
-                }
-
-                ssize_t count = ::read(stream.fd, buffer, sizeof(buffer));
-
-                if (count > 0) {
-                    if (i == 0) {
-                        output.append(buffer, count);
-                    } else {
-                        errors.append(buffer, count);
-                    }
-                } else if (count == 0) {
-                    if (i == 0) {
-                        readFd.reset();
-                    } else {
-                        errorRead.reset();
-                    }
-
-                    stream.fd = -1;
-                    --activeStreams;
-                } else {
-                    if (errno == EINTR) {
-                        continue;
-                    }
-                    throw std::system_error{
-                        errno, std::generic_category(), "Ошибка чтения pipe"
-                    };
-                }
-            }
-        }
 
         int status = child.wait();
 
@@ -269,26 +339,5 @@ namespace process {
         }
 
         return output;
-        // char buffer[256];
-        // ssize_t count;
-        // std::string output;
-
-        // while ((count = read(readFd.get(), buffer, sizeof(buffer))) > 0) {
-        //     // std::cout.write(buffer, count);
-        //     output.append(buffer, count);
-        // }
-
-
-        // int status = child.wait();
-
-        // if(count == -1) {
-        //     throw std::runtime_error{"Ошибка чтения pipe"};
-        // }
-
-        // if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-        //     throw std::runtime_error{"Процесс завершился с ошибкой"};
-        // }
-
-        // return output;
     }
 }

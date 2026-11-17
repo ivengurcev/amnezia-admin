@@ -5,7 +5,12 @@
 #include <nlohmann/json_fwd.hpp>
 #include <string>
 
-HttpServer::HttpServer(const std::string& host, int port, AwgDriver& awg): host_(host), port_(port), awg_(awg) {
+HttpServer::HttpServer(const std::string& host, int port, AwgDriver& awg, PeerService& peer): 
+    host_(host), 
+    port_(port), 
+    awg_(awg),
+    peer_(peer) 
+{
     server_.set_socket_options([](auto sock) {
         httplib::set_socket_opt(sock, SOL_SOCKET, SO_REUSEADDR, 1);
     });    
@@ -54,7 +59,9 @@ bool HttpServer::run() {
 
         res.set_content(data.dump(), "application/json");
     });
+    server_.Post("/api/peers", [this](const httplib::Request&, httplib::Response&) {
 
+    });
 
 
     return server_.listen(host_, port_);

@@ -1,13 +1,16 @@
+#include <csignal>
 #include <httplib.h>
 #include "http/HttpServer.hpp"
+#include "peers/PeerService.hpp"
 // #include "net/Ipv4.hpp"
-// #include "process/ProcessRunner.hpp"
+#include "process/ProcessRunner.hpp"
 // #include "awg/AwgDriver.hpp"
 #include <iostream>
 #include <cstdlib>
 #include <string>
 
 int main() {
+    std::signal(SIGPIPE, SIG_IGN);
     std::cout << std::unitbuf;
     // Внутри main()
     const char* interfaceName = std::getenv("AWG_INTERFACE");
@@ -19,10 +22,18 @@ int main() {
 
     std::cout << "Start" << '\n';
     AwgDriver awg{interfaceName};
-    HttpServer server{"0.0.0.0", 3000, awg};
+    PeerService peer{awg};
+    HttpServer server{"0.0.0.0", 3000, awg, peer};
     // std::cout << process::runCommand("awg", {"--version"});
     // auto peers = awg.listPeers();
 
+    auto output = process::runCommand(
+        "cat",
+        {},
+        "Hello from stdin\n"
+    );
+
+    std::cout << output;
 
     // auto ip = net::ipv4ToInt("10.90.0.1");
     // std::cout << net::intToIpv4(ip) << '\n';

@@ -6,6 +6,7 @@
 namespace process {
     std::string runCommand(
         const std::string& program,
-        const std::vector<std::string>& args
+        const std::vector<std::string>& args,
+        const std::string& input = ""
     );
 }
