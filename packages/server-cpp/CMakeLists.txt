@@ -25,6 +25,7 @@ add_executable(amnezia-admin
     src/http/HttpServer.cpp
     src/process/ProcessRunner.cpp
     src/awg/AwgDriver.cpp
+    src/net/Ipv4.cpp
 )
 target_compile_features(amnezia-admin PRIVATE cxx_std_20)
 target_link_libraries(amnezia-admin PRIVATE 

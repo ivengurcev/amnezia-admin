@@ -1,6 +1,9 @@
 #include "AwgDriver.hpp"
 #include "process/ProcessRunner.hpp"
+#include <cstdint>
+#include <nlohmann/json.hpp>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -54,4 +57,28 @@ std::vector<PeerInfo> AwgDriver::getPeersInfo() const {
         result.push_back(std::move(peer));
     }
     return  result;
+}
+
+void AwgDriver::addPeer(
+    const std::string& publicKey,
+    const std::string& allowedIps    
+) const {
+    process::runCommand(
+        "awg",
+        {"set", interfaceName_, "peer", publicKey, "allowed-ips", allowedIps}
+    );
+}
+
+
+std::string AwgDriver::getInterfaceCidr() const {
+    auto data = nlohmann::json::parse( 
+        process::runCommand("ip", {"-4", "-j", "addr", "show", "dev", interfaceName_})
+    );
+
+    std::string ip = data.at(0).at("addr_info").at(0).at("local").get<std::string>();
+    int prefix = data.at(0).at("addr_info").at(0).at("prefixlen").get<int>();
+
+
+
+    return ip + '/' + std::to_string(prefix) ;
 }

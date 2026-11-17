@@ -22,7 +22,11 @@ public:
     int getListenPort() const;
     std::vector<std::string> listPeers() const;
     std::vector<PeerInfo> getPeersInfo() const;
-
+    void addPeer(
+        const std::string& publicKey,
+        const std::string& allowedIps
+    ) const;
+    std::string getInterfaceCidr() const;
 private:
     std::string interfaceName_;
 };

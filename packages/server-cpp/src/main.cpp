@@ -1,7 +1,8 @@
 #include <httplib.h>
 #include "http/HttpServer.hpp"
+// #include "net/Ipv4.hpp"
 // #include "process/ProcessRunner.hpp"
-#include "awg/AwgDriver.hpp"
+// #include "awg/AwgDriver.hpp"
 #include <iostream>
 #include <cstdlib>
 #include <string>
@@ -20,9 +21,12 @@ int main() {
     AwgDriver awg{interfaceName};
     HttpServer server{"0.0.0.0", 3000, awg};
     // std::cout << process::runCommand("awg", {"--version"});
-    auto peers = awg.listPeers();
+    // auto peers = awg.listPeers();
 
-    std::cerr << "Peers: " << peers.size() << '\n';
+
+    // auto ip = net::ipv4ToInt("10.90.0.1");
+    // std::cout << net::intToIpv4(ip) << '\n';
+    // std::cerr << "Peers: " << peers.size() << '\n';
     if(!server.run()) {
         std::cerr << "Не получилось стартовать" << '\n';
         return 1;
