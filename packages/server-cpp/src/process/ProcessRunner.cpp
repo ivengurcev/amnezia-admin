@@ -6,7 +6,7 @@
 #include <spawn.h>
 #include <stdexcept>
 #include <string>
-#include <sys/poll.h>
+#include <poll.h>
 #include <sys/wait.h>
 #include <system_error>
 #include <unistd.h>

@@ -5,6 +5,8 @@
 #include <stdexcept>
 #include <unordered_set>
 
+PeerService::PeerService(AwgDriver& awg): awg_(awg) {}
+
 std::string PeerService::findAvailableIp() const {
     auto cidr = net::parseCidr(awg_.getInterfaceCidr());
     auto mask = net::prefixToMask(cidr.prefix);
@@ -26,9 +28,11 @@ std::string PeerService::findAvailableIp() const {
     throw std::runtime_error{"Закончились доступные адреса"};
 }
 
-std::string PeerService::createPeer(const std::string& publicKey) const {
+CreatedPeer PeerService::createPeer() const {
     auto availableIP = findAvailableIp();
-    awg_.addPeer(publicKey, availableIP);
+    auto keys = awg_.generateKeyPair();
 
-    return availableIP;
+    awg_.addPeer(keys.publicKey, availableIP);
+
+    return {keys.privateKey, keys.publicKey, availableIP};
 }

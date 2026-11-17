@@ -79,3 +79,22 @@ std::string AwgDriver::getInterfaceCidr() const {
 
     return ip + '/' + std::to_string(prefix) ;
 }
+
+std::string removeTrailingNewline(const std::string& text ) {
+    std::string result{text};
+    if (!result.empty() && result.back() == '\n') {
+        result.pop_back();
+    }
+    return result;
+}
+
+KeyPair AwgDriver::generateKeyPair() const {
+    KeyPair result;
+    result.privateKey = removeTrailingNewline(process::runCommand("awg", {"genkey"}));
+    result.publicKey = removeTrailingNewline(process::runCommand(
+        "awg",
+        {"pubkey"},
+        result.privateKey
+    ));
+    return result;
+}

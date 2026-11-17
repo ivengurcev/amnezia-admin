@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.cpp
+      args:
+        BUILD_TYPE: Debug
 
     environment:
       AWG_INTERFACE: awg0
@@ -18,6 +20,8 @@ services:
 
     volumes:
       - amnezia-cpp-data:/data
+    init: true
+    stop_grace_period: 3s
 
 volumes:
   amnezia-cpp-data:

@@ -15,6 +15,11 @@ struct PeerInfo {
     std::uint64_t tx = 0;
 };
 
+struct KeyPair {
+    std::string privateKey;
+    std::string publicKey;
+};
+
 class AwgDriver {
 public:
     explicit AwgDriver(const std::string& interfaceName);
@@ -27,6 +32,8 @@ public:
         const std::string& allowedIps
     ) const;
     std::string getInterfaceCidr() const;
+    KeyPair generateKeyPair() const;
+    
 private:
     std::string interfaceName_;
 };

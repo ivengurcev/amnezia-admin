@@ -27,13 +27,7 @@ int main() {
     // std::cout << process::runCommand("awg", {"--version"});
     // auto peers = awg.listPeers();
 
-    auto output = process::runCommand(
-        "cat",
-        {},
-        "Hello from stdin\n"
-    );
 
-    std::cout << output;
 
     // auto ip = net::ipv4ToInt("10.90.0.1");
     // std::cout << net::intToIpv4(ip) << '\n';
