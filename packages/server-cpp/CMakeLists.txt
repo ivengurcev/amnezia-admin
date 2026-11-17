@@ -13,6 +13,13 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(httplib)
 
+FetchContent_Declare(
+    json
+    URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
+)
+
+FetchContent_MakeAvailable(json)
+
 add_executable(amnezia-admin 
     src/main.cpp
     src/http/HttpServer.cpp
@@ -20,7 +27,10 @@ add_executable(amnezia-admin
     src/awg/AwgDriver.cpp
 )
 target_compile_features(amnezia-admin PRIVATE cxx_std_20)
-target_link_libraries(amnezia-admin PRIVATE httplib::httplib)
+target_link_libraries(amnezia-admin PRIVATE 
+    httplib::httplib
+    nlohmann_json::nlohmann_json
+)
 target_include_directories(amnezia-admin PRIVATE src)
 
 add_executable(process-demo

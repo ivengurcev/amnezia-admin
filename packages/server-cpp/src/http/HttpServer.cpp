@@ -1,6 +1,8 @@
 #include "HttpServer.hpp"
+#include <nlohmann/json.hpp>
 #include <exception>
 #include <iostream>
+#include <nlohmann/json_fwd.hpp>
 #include <string>
 
 HttpServer::HttpServer(const std::string& host, int port, AwgDriver& awg): host_(host), port_(port), awg_(awg) {
@@ -9,16 +11,51 @@ HttpServer::HttpServer(const std::string& host, int port, AwgDriver& awg): host_
     });    
 }
 
+
 bool HttpServer::run() {
-    server_.Get("/api/status", [this](const httplib::Request&, httplib::Response& res) {
-        try {
-            auto port = awg_.getListenPort();
-            res.set_content(R"({"listenPort":)" + std::to_string(port) + "}", "application/json");
-        } catch (const std::exception& e) {
+
+    server_.set_exception_handler(
+        [](const httplib::Request&, httplib::Response& res, std::exception_ptr ep) {
+            try {
+                std::rethrow_exception(ep);
+            } catch (const std::exception& e) {
+                std::cerr << "HTTP error: " << e.what() << '\n';
+            } catch (...) {
+                std::cerr << "Unknown HTTP error\n";
+            }
+
             res.status = 500;
-            std::cerr << e.what() << '\n';
-            res.set_content(R"({"error":"Internal Server Error"})", "application/json");
+            res.set_content(
+                R"({"error":"Internal Server Error"})",
+                "application/json"
+            );
         }
+    );
+
+    server_.Get("/api/status", [this](const httplib::Request&, httplib::Response& res) {
+        auto port = awg_.getListenPort();
+        res.set_content(R"({"listenPort":)" + std::to_string(port) + "}", "application/json");
     });
+
+    server_.Get("/api/peers", [this](const httplib::Request&, httplib::Response& res) {
+        auto peers = awg_.getPeersInfo();
+        nlohmann::json data = nlohmann::json::array();
+
+        for (const auto& peer : peers) {
+            data.push_back({
+                {"publicKey", peer.publicKey},
+                {"endpoint", peer.endpoint},
+                {"allowedIps", peer.allowedIps},
+                {"latestHandshake", peer.latestHandshake},
+                {"rx", peer.rx},
+                {"tx", peer.tx}
+            });
+        }
+
+        res.set_content(data.dump(), "application/json");
+    });
+
+
+
     return server_.listen(host_, port_);
 }

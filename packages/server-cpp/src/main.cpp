@@ -7,6 +7,7 @@
 #include <string>
 
 int main() {
+    std::cout << std::unitbuf;
     // Внутри main()
     const char* interfaceName = std::getenv("AWG_INTERFACE");
 
@@ -19,7 +20,9 @@ int main() {
     AwgDriver awg{interfaceName};
     HttpServer server{"0.0.0.0", 3000, awg};
     // std::cout << process::runCommand("awg", {"--version"});
+    auto peers = awg.listPeers();
 
+    std::cerr << "Peers: " << peers.size() << '\n';
     if(!server.run()) {
         std::cerr << "Не получилось стартовать" << '\n';
         return 1;
