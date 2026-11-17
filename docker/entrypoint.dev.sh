@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-INTERFACE="${AWG_INTERFACE:-awg-test}"
+INTERFACE="${AWG_INTERFACE:?AWG_INTERFACE is required}"
 ADDRESS="${AWG_ADDRESS:-10.90.0.1/24}"
 PORT="${AWG_PORT:-18443}"
 JC="${AWG_JC:-4}"

@@ -8,7 +8,7 @@ services:
 
         environment:
             AWG_DRIVER: real
-            AWG_INTERFACE: awg-test
+            AWG_INTERFACE: awg0
             AWG_ADDRESS: 10.90.0.1/24
             AWG_PORT: 18443
             AWG_ENDPOINT_HOST: amnezia-admin

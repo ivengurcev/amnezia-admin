@@ -16,9 +16,12 @@ FetchContent_MakeAvailable(httplib)
 add_executable(amnezia-admin 
     src/main.cpp
     src/http/HttpServer.cpp
+    src/process/ProcessRunner.cpp
+    src/awg/AwgDriver.cpp
 )
 target_compile_features(amnezia-admin PRIVATE cxx_std_20)
 target_link_libraries(amnezia-admin PRIVATE httplib::httplib)
+target_include_directories(amnezia-admin PRIVATE src)
 
 add_executable(process-demo
     src/process_demo.cpp
