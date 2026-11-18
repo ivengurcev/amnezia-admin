@@ -23,7 +23,8 @@ int main() {
 
     std::cout << "Start" << '\n';
     AwgDriver awg{interfaceName};
-    PeerStore store{"/data/peers.json"};
+    // PeerStore store{"/data/peers.json"};
+    PeerStore store{"/data/amnezia-admin.db"};
     PeerService peer{awg, store};
     HttpServer server{"0.0.0.0", 3000, awg, peer};
     // std::cout << process::runCommand("awg", {"--version"});

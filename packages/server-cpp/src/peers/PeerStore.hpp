@@ -2,6 +2,8 @@
 
 #include "PeerService.hpp"
 
+#include <SQLiteCpp/SQLiteCpp.h>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -9,9 +11,11 @@ class PeerStore {
 public:
     explicit PeerStore(const std::string& path);
 
-    std::vector<CreatedPeer> load() const;
-    void save(const std::vector<CreatedPeer>& peers) const;
+    std::vector<CreatedPeer> list();
+    void insert(const CreatedPeer& peer);
+    bool remove(const std::string& publicKey);
 
 private:
-    std::string path_;
+    SQLite::Database db_;
+    std::mutex mutex_;
 };

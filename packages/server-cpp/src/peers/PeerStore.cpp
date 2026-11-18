@@ -1,62 +1,82 @@
 #include "PeerStore.hpp"
-#include <fstream>
-#include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
-#include <filesystem>
-#include <stdexcept>
 
-PeerStore::PeerStore(const std::string& path): path_(path) {}
-std::vector<CreatedPeer> PeerStore::load() const {
-    if (!std::filesystem::exists(path_)) {
-        return {};
-    }
-    std::ifstream file{path_};
-    if (!file) {
-        throw std::runtime_error{"Не удалось открыть базу сохраненных подключений"};
-    }
-    nlohmann::json data;
-    file >> data;
+PeerStore::PeerStore(const std::string& path)
+    : db_{path, SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE}
+{
+    db_.exec("PRAGMA foreign_keys = ON");
 
-    std::vector<CreatedPeer> result;
-    for(const auto& peer: data) {
-        result.push_back({
-            peer.at("privateKey").get<std::string>(),
-            peer.at("publicKey").get<std::string>(),
-            peer.at("allowedIps").get<std::string>()
+    db_.exec(R"sql(
+        CREATE TABLE IF NOT EXISTS peers (
+            public_key TEXT PRIMARY KEY,
+            private_key TEXT NOT NULL,
+            allowed_ips TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL DEFAULT '',
+            created_at INTEGER NOT NULL DEFAULT (unixepoch())
+        )
+    )sql");
+
+    db_.exec(R"sql(
+        CREATE TABLE IF NOT EXISTS delivery_links (
+            id INTEGER PRIMARY KEY,
+            peer_public_key TEXT NOT NULL
+                REFERENCES peers(public_key) ON DELETE CASCADE,
+            token_hash TEXT NOT NULL UNIQUE,
+            created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+            expires_at INTEGER NOT NULL,
+            used_at INTEGER
+        )
+    )sql");
+}
+
+std::vector<CreatedPeer> PeerStore::list() {
+    std::lock_guard lock{mutex_};
+
+    SQLite::Statement query{
+        db_,
+        "SELECT private_key, public_key, allowed_ips FROM peers"
+    };
+
+    std::vector<CreatedPeer> peers;
+
+    while (query.executeStep()) {
+        peers.push_back({
+            query.getColumn(0).getString(),
+            query.getColumn(1).getString(),
+            query.getColumn(2).getString()
         });
-    }    
-    return result;
-} 
-
-void PeerStore::save(const std::vector<CreatedPeer>& peers) const {
-    std::string tmpFileName{path_ + ".tmp"};
-    nlohmann::json data = nlohmann::json::array();
-
-    for (const auto& peer : peers) {
-        data.push_back({
-            {"privateKey", peer.privateKey},
-            {"publicKey", peer.publicKey},
-            {"allowedIps", peer.allowedIps}
-        });
     }
+    return peers;
+}
 
-    {
-        std::ofstream file{tmpFileName};
-        if (!file) {
-            throw std::runtime_error{"Не удалось открыть файл"};
-        }
 
-        file << data.dump();
-        file.flush();
 
-        if (!file) {
-            throw std::runtime_error{"Ошибка записи файла"};
-        }
-        file.close();
-        if (!file) {
-            throw std::runtime_error{"Ошибка закрытия файла"};
-        }
-    }
-    std::filesystem::rename(tmpFileName, path_);
+void PeerStore::insert(const CreatedPeer& peer) {
+    std::lock_guard lock{mutex_};
+
+    SQLite::Statement query{
+        db_,
+        "INSERT INTO peers (public_key, private_key, allowed_ips) "
+        "VALUES (?, ?, ?)"
+    };
+
+    query.bind(1, peer.publicKey);
+    query.bind(2, peer.privateKey);
+    query.bind(3, peer.allowedIps);
+
+    query.exec();
+}
+
+bool PeerStore::remove(const std::string& publicKey) {
+    std::lock_guard lock{mutex_};
+
+    SQLite::Statement query{
+        db_,
+        "DELETE FROM peers WHERE public_key = ?"
+    };
+
+    query.bind(1, publicKey);
+
+    return query.exec() > 0;
 }

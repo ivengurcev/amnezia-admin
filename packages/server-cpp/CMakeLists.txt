@@ -20,6 +20,21 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(json)
 
+set(SQLITECPP_INTERNAL_SQLITE ON CACHE BOOL "" FORCE)
+set(SQLITECPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(SQLITECPP_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(SQLITECPP_RUN_CPPLINT OFF CACHE BOOL "" FORCE)
+set(SQLITECPP_RUN_CPPCHECK OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+    SQLiteCpp
+    GIT_REPOSITORY https://github.com/SRombauts/SQLiteCpp.git
+    GIT_TAG 3.4.0
+    GIT_SHALLOW TRUE
+)
+
+FetchContent_MakeAvailable(SQLiteCpp)
+
 add_executable(amnezia-admin 
     src/main.cpp
     src/http/HttpServer.cpp
@@ -33,7 +48,8 @@ add_executable(amnezia-admin
 target_compile_features(amnezia-admin PRIVATE cxx_std_20)
 target_link_libraries(amnezia-admin PRIVATE 
     httplib::httplib
-    nlohmann_json::nlohmann_json
+    nlohmann_json::nlohmann_json 
+    SQLiteCpp
 )
 target_include_directories(amnezia-admin PRIVATE src)
 

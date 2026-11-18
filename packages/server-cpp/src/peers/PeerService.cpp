@@ -32,14 +32,11 @@ std::string PeerService::findAvailableIp() const {
 CreatedPeer PeerService::createPeer() const {
     auto availableIP = findAvailableIp();
     auto keys = awg_.generateKeyPair();
-    auto peers = store_.load();
 
     awg_.addPeer(keys.publicKey, availableIP);
 
-    peers.push_back({keys.privateKey, keys.publicKey, availableIP});
-
     try {
-        store_.save(peers);
+        store_.insert({keys.privateKey, keys.publicKey, availableIP});
     } catch (...) {
         awg_.removePeer(keys.publicKey);
         throw;
@@ -49,22 +46,15 @@ CreatedPeer PeerService::createPeer() const {
 }
 
 void PeerService::removePeer(const std::string& publicKey) const {
-    auto peers = store_.load();
-    
-    auto removed = std::erase_if(peers, [publicKey](const auto& peer){
-        return peer.publicKey == publicKey;
-    });
 
-    if (removed == 0) {
+    if(!store_.remove(publicKey)) {
         throw std::runtime_error{"Клиент не найден"};
     }
-
-    store_.save(peers);
     awg_.removePeer(publicKey);
 }
 
 void PeerService::restorePeers() const {
-    auto peers = store_.load();
+    auto peers = store_.list();
     for(const auto& peer: peers) {
         awg_.addPeer(peer.publicKey, peer.allowedIps);
     }
