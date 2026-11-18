@@ -3,26 +3,12 @@
 #include <openssl/sha.h>
 
 #include "links/LinkService.hpp"
+#include "utils/Hex.hpp"
 #include <optional>
 #include <stdexcept>
 #include <string>
 
 namespace {
-    std::string toHex(const unsigned char* data, std::size_t size) {
-        constexpr char digits[] = "0123456789abcdef";
-
-        std::string result;
-        result.reserve(size * 2);
-
-        for (std::size_t i = 0; i < size; ++i) {
-            unsigned char byte = data[i];
-
-            result += digits[byte >> 4];
-            result += digits[byte & 0x0F];
-        }
-
-        return result;
-    }
     std::string hashToken(const std::string& token) {
         std::array<unsigned char, SHA256_DIGEST_LENGTH> digest{};
 
@@ -32,7 +18,7 @@ namespace {
             digest.data()
         );
 
-        return toHex(digest.data(), digest.size());
+        return utils::toHex(digest.data(), digest.size());
     }
 }
 
@@ -63,7 +49,7 @@ std::string LinkService::create(
     if (RAND_bytes(bytes.data(), static_cast<int>(bytes.size())) != 1) {
         throw std::runtime_error{"Failed to generate random token"};
     }
-    auto token = toHex(bytes.data(), bytes.size());
+    auto token = utils::toHex(bytes.data(), bytes.size());
     
     query.bind(1, peerPublicKey);
     query.bind(2, hashToken(token));

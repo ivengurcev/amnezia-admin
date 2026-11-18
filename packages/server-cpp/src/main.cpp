@@ -4,6 +4,7 @@
 #include "peers/PeerService.hpp"
 #include "peers/PeerStore.hpp"
 #include "links/LinkService.hpp"
+#include "cli/Cli.hpp"
 // #include "net/Ipv4.hpp"
 // #include "process/ProcessRunner.hpp"
 #include "awg/AwgDriver.hpp"
@@ -11,11 +12,15 @@
 #include <cstdlib>
 #include <string>
 
-int main() {
+int main(int argc, char* argv[]) {
     std::signal(SIGPIPE, SIG_IGN);
     std::cout << std::unitbuf;
     // Внутри main()
     const char* interfaceName = std::getenv("AWG_INTERFACE");
+
+    if (argc > 1) {
+        return runCli(argc, argv);
+    }
 
     if (!interfaceName || !*interfaceName) {
         std::cerr << "AWG_INTERFACE is required\n";

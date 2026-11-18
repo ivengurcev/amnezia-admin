@@ -1,4 +1,5 @@
 #include "PeerStore.hpp"
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -13,7 +14,19 @@ PeerStore::PeerStore(const std::string& path)
             private_key TEXT NOT NULL,
             allowed_ips TEXT NOT NULL UNIQUE,
             name TEXT NOT NULL DEFAULT '',
-            created_at INTEGER NOT NULL DEFAULT (unixepoch())
+
+            is_admin INTEGER NOT NULL DEFAULT 0
+                CHECK (is_admin IN (0, 1)),
+
+            password_hash TEXT,
+
+            created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+
+            CHECK (
+                (is_admin = 0 AND password_hash IS NULL)
+                OR
+                (is_admin = 1 AND password_hash IS NOT NULL)
+            )
         )
     )sql");
 
@@ -35,16 +48,24 @@ std::vector<CreatedPeer> PeerStore::list() {
 
     SQLite::Statement query{
         db_,
-        "SELECT private_key, public_key, allowed_ips FROM peers"
+        R"(SELECT
+            private_key,
+            public_key,
+            allowed_ips,
+            name,
+            is_admin
+        FROM peers)"
     };
 
     std::vector<CreatedPeer> peers;
-
     while (query.executeStep()) {
         peers.push_back({
             query.getColumn(0).getString(),
             query.getColumn(1).getString(),
-            query.getColumn(2).getString()
+            query.getColumn(2).getString(),
+            query.getColumn(3).getString(), // Имя
+            query.getColumn(4).getInt() != 0, // is_Admin
+            std::nullopt // password                
         });
     }
     return peers;
@@ -57,13 +78,30 @@ void PeerStore::insert(const CreatedPeer& peer) {
 
     SQLite::Statement query{
         db_,
-        "INSERT INTO peers (public_key, private_key, allowed_ips) "
-        "VALUES (?, ?, ?)"
+        R"sql(
+            INSERT INTO peers (
+                public_key,
+                private_key,
+                allowed_ips,
+                name,
+                is_admin,
+                password_hash
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+        )sql"
     };
 
     query.bind(1, peer.publicKey);
     query.bind(2, peer.privateKey);
     query.bind(3, peer.allowedIps);
+    query.bind(4, peer.name);
+    query.bind(5, peer.isAdmin ? 1 : 0);
+
+    if (peer.passwordHash) {
+        query.bind(6, *peer.passwordHash);
+    } else {
+        query.bind(6); // SQL NULL
+    }
 
     query.exec();
 }
@@ -86,8 +124,14 @@ std::optional<CreatedPeer> PeerStore::find(const std::string& publicKey) {
 
     SQLite::Statement query{
         db_,
-        "SELECT private_key, public_key, allowed_ips "
-        "FROM peers WHERE public_key = ?"
+        R"(SELECT
+            private_key,
+            public_key,
+            allowed_ips,
+            name,
+            is_admin,
+            password_hash
+        FROM peers WHERE public_key = ?)"
     };
 
     query.bind(1, publicKey);
@@ -96,9 +140,23 @@ std::optional<CreatedPeer> PeerStore::find(const std::string& publicKey) {
         return std::nullopt;
     }
 
+    std::optional<std::string> passwordHash;
+
+    if (!query.getColumn(5).isNull()) {
+        passwordHash = query.getColumn(5).getString();
+    }
+
     return CreatedPeer{
         query.getColumn(0).getString(),
         query.getColumn(1).getString(),
-        query.getColumn(2).getString()
+        query.getColumn(2).getString(),
+        // Имя
+        query.getColumn(3).getString(),
+
+        // Флаг администратора
+        query.getColumn(4).getInt() != 0,
+
+        // Необязательный хеш
+        passwordHash    
     };
 }

@@ -29,20 +29,31 @@ std::string PeerService::findAvailableIp() const {
     throw std::runtime_error{"Закончились доступные адреса"};
 }
 
-CreatedPeer PeerService::createPeer() const {
+CreatedPeer PeerService::createPeer(
+    const std::string& name,
+    const std::optional<std::string>& passwordHash
+) const {
     auto availableIP = findAvailableIp();
     auto keys = awg_.generateKeyPair();
+    CreatedPeer created{
+        keys.privateKey,
+        keys.publicKey,
+        availableIP,
+        name,
+        passwordHash.has_value(),
+        passwordHash
+    };
 
-    awg_.addPeer(keys.publicKey, availableIP);
+    awg_.addPeer(created.publicKey, created.allowedIps);
 
     try {
-        store_.insert({keys.privateKey, keys.publicKey, availableIP});
+        store_.insert(created);
     } catch (...) {
-        awg_.removePeer(keys.publicKey);
+        awg_.removePeer(created.publicKey);
         throw;
     }
 
-    return {keys.privateKey, keys.publicKey, availableIP};
+    return created;
 }
 
 void PeerService::removePeer(const std::string& publicKey) const {

@@ -1,8 +1,8 @@
 {
   "name": "amnezia-admin",
   "private": true,
-  "packageManager": "yarn@4.18.0",
+  "packageManager": "yarn@4.18.1",
   "workspaces": [
-    "packages/*"
+    "packages/web"
   ]
 }
