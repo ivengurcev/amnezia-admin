@@ -2,7 +2,6 @@
 #include <nlohmann/json.hpp>
 #include <exception>
 #include <iostream>
-#include <nlohmann/json_fwd.hpp>
 #include <string>
 
 HttpServer::HttpServer(const std::string& host, int port, AwgDriver& awg, PeerService& peer): 
@@ -59,10 +58,23 @@ bool HttpServer::run() {
 
         res.set_content(data.dump(), "application/json");
     });
-    server_.Post("/api/peers", [this](const httplib::Request&, httplib::Response&) {
-
+    server_.Post("/api/peers", [this](const httplib::Request&, httplib::Response& res) {
+        auto created = peer_.createPeer();
+        nlohmann::json data = {
+            {"publicKey", created.publicKey},
+            {"privateKey", created.privateKey},
+            {"allowedIps", created.allowedIps}
+        };    
+        res.status = 201;
+        res.set_content(data.dump(), "application/json");
     });
+    server_.Delete("/api/peers", [this](const httplib::Request& req, httplib::Response& res) {
+        auto data = nlohmann::json::parse(req.body);
+        auto publicKey = data.at("publicKey").get<std::string>();
 
+        peer_.removePeer(publicKey);
+        res.status = 204;
+    });
 
     return server_.listen(host_, port_);
 }

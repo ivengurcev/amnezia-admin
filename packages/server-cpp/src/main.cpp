@@ -2,9 +2,10 @@
 #include <httplib.h>
 #include "http/HttpServer.hpp"
 #include "peers/PeerService.hpp"
+#include "peers/PeerStore.hpp"
 // #include "net/Ipv4.hpp"
-#include "process/ProcessRunner.hpp"
-// #include "awg/AwgDriver.hpp"
+// #include "process/ProcessRunner.hpp"
+#include "awg/AwgDriver.hpp"
 #include <iostream>
 #include <cstdlib>
 #include <string>
@@ -22,11 +23,12 @@ int main() {
 
     std::cout << "Start" << '\n';
     AwgDriver awg{interfaceName};
-    PeerService peer{awg};
+    PeerStore store{"/data/peers.json"};
+    PeerService peer{awg, store};
     HttpServer server{"0.0.0.0", 3000, awg, peer};
     // std::cout << process::runCommand("awg", {"--version"});
     // auto peers = awg.listPeers();
-
+    peer.restorePeers();
 
 
     // auto ip = net::ipv4ToInt("10.90.0.1");

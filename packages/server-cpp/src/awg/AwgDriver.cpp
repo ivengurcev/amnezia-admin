@@ -68,6 +68,18 @@ void AwgDriver::addPeer(
     );
 }
 
+void AwgDriver::removePeer(const std::string& publicKey) const {
+    process::runCommand(
+        "awg",
+        {
+            "set", 
+            interfaceName_, 
+            "peer", 
+            publicKey, 
+            "remove"
+        }
+    );
+}
 
 std::string AwgDriver::getInterfaceCidr() const {
     auto data = nlohmann::json::parse( 

@@ -31,9 +31,10 @@ public:
         const std::string& publicKey,
         const std::string& allowedIps
     ) const;
+    void removePeer(const std::string& publicKey) const;
     std::string getInterfaceCidr() const;
     KeyPair generateKeyPair() const;
-    
+
 private:
     std::string interfaceName_;
 };
