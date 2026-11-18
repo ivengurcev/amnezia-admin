@@ -110,3 +110,71 @@ KeyPair AwgDriver::generateKeyPair() const {
     ));
     return result;
 }
+
+bool parseBool(const std::string& value) {
+    if (value == "on") return true;
+    if (value == "off") return false;
+
+    throw std::runtime_error{"Invalid boolean value: " + value};
+}
+
+AwgInterfaceConfig AwgDriver::getInterfaceConfig() const {
+    std::istringstream linesStream{ process::runCommand("awg", {"show", interfaceName_, "dump"})};
+    std::string line;
+
+    if (!std::getline(linesStream, line)) {
+        throw std::runtime_error{"Не удалось прочитать конфигурацию AWG"};
+    }
+    std::istringstream lineStream{line};
+    AwgInterfaceConfig config;
+
+    std::string randomTrailers;
+    std::string disableCookies;
+
+    if (!(lineStream 
+            >> config.privateKey 
+            >> config.publicKey
+            >> config.listenPort
+
+            >> config.jc
+            >> config.jmin
+            >> config.jmax
+
+            >> config.s1
+            >> config.s2
+            >> config.s3
+            >> config.s4
+
+            >> config.h1
+            >> config.h2
+            >> config.h3
+            >> config.h4
+
+            >> config.i1
+            >> config.i2
+            >> config.i3
+            >> config.i4
+            >> config.i5
+
+            >> config.headerProtectionKey
+            >> config.contentPaddingAddition
+
+            >> config.rekeyAfterTime
+            >> config.rekeyTimeout
+            >> config.rejectAfterTime
+            >> config.keepaliveTimeout
+            >> config.maxHandshakeAttempts
+
+            >> randomTrailers
+            >> disableCookies
+
+            >> config.fwmark
+        )
+    ) {
+        throw std::runtime_error("Invalid AWG interface data");
+    }
+    config.randomTrailers = parseBool(randomTrailers);
+    config.disableCookies = parseBool(disableCookies);
+
+    return config;
+}
