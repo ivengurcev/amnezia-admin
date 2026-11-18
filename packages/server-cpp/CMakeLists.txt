@@ -46,10 +46,13 @@ add_executable(amnezia-admin
     src/config/ClientConfig.cpp
 )
 target_compile_features(amnezia-admin PRIVATE cxx_std_20)
+
+find_package(OpenSSL REQUIRED)
 target_link_libraries(amnezia-admin PRIVATE 
     httplib::httplib
     nlohmann_json::nlohmann_json 
     SQLiteCpp
+    OpenSSL::Crypto
 )
 target_include_directories(amnezia-admin PRIVATE src)
 

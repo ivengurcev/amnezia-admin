@@ -3,7 +3,8 @@ FROM amneziavpn/amneziawg-go:3.1.20260828 AS builder
 RUN apk add --no-cache \
     build-base \
     cmake \
-    git
+    git \
+    openssl-dev
 
 WORKDIR /app
 
@@ -20,7 +21,7 @@ RUN --mount=type=cache,target=/app/build,sharing=locked \
 
 FROM amneziavpn/amneziawg-go:3.1.20260828
 
-RUN apk add --no-cache libstdc++ libgcc
+RUN apk add --no-cache libstdc++ libgcc libcrypto3
 
 COPY --from=builder /tmp/amnezia-admin /usr/local/bin/amnezia-admin
 
