@@ -80,3 +80,25 @@ bool PeerStore::remove(const std::string& publicKey) {
 
     return query.exec() > 0;
 }
+
+std::optional<CreatedPeer> PeerStore::find(const std::string& publicKey) {
+    std::lock_guard lock{mutex_};
+
+    SQLite::Statement query{
+        db_,
+        "SELECT private_key, public_key, allowed_ips "
+        "FROM peers WHERE public_key = ?"
+    };
+
+    query.bind(1, publicKey);
+
+    if (!query.executeStep()) {
+        return std::nullopt;
+    }
+
+    return CreatedPeer{
+        query.getColumn(0).getString(),
+        query.getColumn(1).getString(),
+        query.getColumn(2).getString()
+    };
+}

@@ -3,6 +3,7 @@
 #include "http/HttpServer.hpp"
 #include "peers/PeerService.hpp"
 #include "peers/PeerStore.hpp"
+#include "links/LinkService.hpp"
 // #include "net/Ipv4.hpp"
 // #include "process/ProcessRunner.hpp"
 #include "awg/AwgDriver.hpp"
@@ -26,7 +27,27 @@ int main() {
     // PeerStore store{"/data/peers.json"};
     PeerStore store{"/data/amnezia-admin.db"};
     PeerService peer{awg, store};
-    HttpServer server{"0.0.0.0", 3000, awg, peer};
+    LinkService links{"/data/amnezia-admin.db"};
+    // HttpServer server{"0.0.0.0", 3000, awg, peer};
+    const char* endpointHost = std::getenv("AWG_ENDPOINT_HOST");
+    const char* setupBaseUrl = std::getenv("SETUP_BASE_URL");
+
+    if (!endpointHost || !*endpointHost || !setupBaseUrl || !*setupBaseUrl) {
+        std::cerr << "AWG_ENDPOINT_HOST and SETUP_BASE_URL are required\n";
+        return 1;
+    }
+
+    HttpServer server{
+        "0.0.0.0",
+        3000,
+        awg,
+        peer,
+        store,
+        links,
+        endpointHost,
+        setupBaseUrl
+    };
+
     // std::cout << process::runCommand("awg", {"--version"});
     // auto peers = awg.listPeers();
     peer.restorePeers();

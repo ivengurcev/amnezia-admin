@@ -25,6 +25,9 @@ std::string config::generateClientConfig(
     config << "PrivateKey=" << peer.privateKey << '\n';
     config << "Address=" << peer.allowedIps << '\n';
 
+
+    config << "DNS=" << options.dns << '\n';
+    config << "MTU=" << options.mtu << '\n';
     // Obfuscation
     config << "Jc=" << server.jc << '\n';
     config << "Jmin=" << server.jmin << '\n';

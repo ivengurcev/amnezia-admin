@@ -44,6 +44,7 @@ add_executable(amnezia-admin
     src/peers/PeerService.cpp
     src/peers/PeerStore.cpp
     src/config/ClientConfig.cpp
+    src/links/LinkService.cpp
 )
 target_compile_features(amnezia-admin PRIVATE cxx_std_20)
 

@@ -16,6 +16,7 @@ public:
     );
 
     std::optional<std::string> redeem(const std::string& token);
+    std::optional<std::string> peek(const std::string& token);
 
 private:
     SQLite::Database db_;

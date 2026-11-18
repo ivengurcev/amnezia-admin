@@ -4,6 +4,7 @@
 
 #include <SQLiteCpp/SQLiteCpp.h>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -14,6 +15,7 @@ public:
     std::vector<CreatedPeer> list();
     void insert(const CreatedPeer& peer);
     bool remove(const std::string& publicKey);
+    std::optional<CreatedPeer> find(const std::string& publicKey);
 
 private:
     SQLite::Database db_;

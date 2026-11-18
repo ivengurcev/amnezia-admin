@@ -8,6 +8,8 @@ services:
 
     environment:
       AWG_INTERFACE: awg0
+      AWG_ENDPOINT_HOST: 127.0.0.1
+      SETUP_BASE_URL: http://localhost:3001      
 
     cap_add:
       - NET_ADMIN

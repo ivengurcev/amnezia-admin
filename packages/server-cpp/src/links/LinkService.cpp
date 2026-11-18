@@ -96,3 +96,26 @@ std::optional<std::string> LinkService::redeem(const std::string& token) {
 
     return query.getColumn(0).getString();
 }
+
+std::optional<std::string> LinkService::peek(const std::string& token) {
+    std::lock_guard lock{mutex_};
+
+    SQLite::Statement query{
+        db_,
+        R"sql(
+            SELECT peer_public_key
+            FROM delivery_links
+            WHERE token_hash = ?
+              AND used_at IS NULL
+              AND expires_at > unixepoch()
+        )sql"
+    };
+
+    query.bind(1, hashToken(token));
+
+    if (!query.executeStep()) {
+        return std::nullopt;
+    }
+
+    return query.getColumn(0).getString();
+}
