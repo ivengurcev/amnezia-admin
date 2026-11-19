@@ -170,7 +170,8 @@ HttpServer::HttpServer(
     PeerStore& store,
     LinkService& links,
     const std::string& endpointHost,
-    const std::string& setupBaseUrl
+    const std::string& setupBaseUrl,
+    bool devMode
 ): 
     host_(host), 
     port_(port), 
@@ -181,7 +182,8 @@ HttpServer::HttpServer(
     store_(store),
     links_(links),
     endpointHost_(endpointHost),
-    setupBaseUrl_(setupBaseUrl)     
+    setupBaseUrl_(setupBaseUrl),
+    devMode_(devMode)     
 {
     publicServer_.set_socket_options([](auto sock) {
         httplib::set_socket_opt(sock, SOL_SOCKET, SO_REUSEADDR, 1);
@@ -324,7 +326,7 @@ void HttpServer::registerAdminRoutes() {
                 return httplib::Server::HandlerResponse::Unhandled;
             }
 
-            if (!store_.isAdminIp(req.remote_addr)) {
+            if (!devMode_ && !store_.isAdminIp(req.remote_addr)) {
                 res.status = 404;
                 return httplib::Server::HandlerResponse::Handled;
             }
@@ -368,7 +370,7 @@ void HttpServer::registerAdminRoutes() {
         res.status = 201;
         res.set_content(data.dump(), "application/json");
     });
-    
+
     adminServer_.Delete("/api/peers", [this](const httplib::Request& req, httplib::Response& res) {
         auto data = nlohmann::json::parse(req.body);
         auto publicKey = data.at("publicKey").get<std::string>();

@@ -20,7 +20,8 @@ public:
         PeerStore& store,
         LinkService& links,
         const std::string& endpointHost,
-        const std::string& setupBaseUrl
+        const std::string& setupBaseUrl,
+        bool devMode
     );
     bool run();
     void registerPublicRoutes();
@@ -39,4 +40,5 @@ private:
     LinkService& links_;
     std::string endpointHost_;
     std::string setupBaseUrl_;
+    bool devMode_;
 };

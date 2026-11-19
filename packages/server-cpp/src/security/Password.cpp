@@ -3,7 +3,9 @@
 
 #include <openssl/evp.h>
 #include <openssl/rand.h>
+#include <openssl/crypto.h>
 
+#include <string_view>
 #include <array>
 #include <cstdint>
 #include <iostream>
@@ -90,4 +92,67 @@ std::string hashPassword(const std::string& password) {
         + utils::toHex(salt.data(), salt.size())
         + "$"
         + utils::toHex(hash.data(), hash.size());
+}
+
+
+bool verifyPassword(
+    const std::string& password,
+    const std::string& storedHash
+) {
+    constexpr std::string_view prefix = "scrypt$32768$8$1$";
+
+    std::string_view data{storedHash};
+
+    if (!data.starts_with(prefix)) {
+        return false;
+    }
+
+    data.remove_prefix(prefix.size());
+
+    const auto separator = data.find('$');
+
+    if (separator == std::string_view::npos) {
+        return false;
+    }
+
+    const auto saltHex = data.substr(0, separator);
+    const auto hashHex = data.substr(separator + 1);
+
+    // 16 байт соли и 32 байта хеша в hex.
+    if (saltHex.size() != 32 || hashHex.size() != 64) {
+        return false;
+    }
+
+    std::vector<unsigned char> salt;
+    std::vector<unsigned char> expectedHash;
+
+    try {
+        salt = utils::fromHex(saltHex);
+        expectedHash = utils::fromHex(hashHex);
+    } catch (const std::invalid_argument&) {
+        return false;
+    }
+
+    std::array<unsigned char, 32> actualHash{};
+
+    if (EVP_PBE_scrypt(
+            password.data(),
+            password.size(),
+            salt.data(),
+            salt.size(),
+            32768,
+            8,
+            1,
+            64 * 1024 * 1024,
+            actualHash.data(),
+            actualHash.size()
+        ) != 1) {
+        throw std::runtime_error{"Не удалось проверить пароль"};
+    }
+
+    return CRYPTO_memcmp(
+        actualHash.data(),
+        expectedHash.data(),
+        actualHash.size()
+    ) == 0;
 }

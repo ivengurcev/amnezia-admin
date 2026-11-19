@@ -76,6 +76,8 @@ int main(int argc, char* argv[]) {
     // HttpServer server{"0.0.0.0", 3000, awg, peer};
     const char* endpointHost = std::getenv("AWG_ENDPOINT_HOST");
     const char* setupBaseUrl = std::getenv("SETUP_BASE_URL");
+    const char* devEnv = std::getenv("ADMIN_DEV_MODE");
+    const bool devMode = devEnv && std::string_view{devEnv} == "1";
 
     if (!endpointHost || !*endpointHost || !setupBaseUrl || !*setupBaseUrl) {
         std::cerr << "AWG_ENDPOINT_HOST and SETUP_BASE_URL are required\n";
@@ -85,14 +87,15 @@ int main(int argc, char* argv[]) {
     HttpServer server{
         "0.0.0.0",
         3000,
-        getInterfaceIp(interfaceName),
+        devMode ? "0.0.0.0" : getInterfaceIp(interfaceName),
         3002,
         awg,
         peer,
         store,
         links,
         endpointHost,
-        setupBaseUrl
+        setupBaseUrl,
+        devMode
     };
 
     // std::cout << process::runCommand("awg", {"--version"});

@@ -8,8 +8,10 @@ services:
 
     environment:
       AWG_INTERFACE: awg0
+      AWG_PORT: ${AWG_PORT}
       AWG_ENDPOINT_HOST: 127.0.0.1
-      SETUP_BASE_URL: http://localhost:3001      
+      SETUP_BASE_URL: http://localhost:3001     
+      ADMIN_DEV_MODE: "1" 
 
     cap_add:
       - NET_ADMIN
@@ -19,6 +21,8 @@ services:
 
     ports:
       - "127.0.0.1:3001:3000"
+      - "${AWG_PORT}:${AWG_PORT}/udp"
+      - "3002:3002"
 
     volumes:
       - amnezia-cpp-data:/data
