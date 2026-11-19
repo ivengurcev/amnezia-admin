@@ -1,4 +1,5 @@
 #include "HttpServer.hpp"
+#include <algorithm>
 #include <nlohmann/json.hpp>
 #include <exception>
 #include <iostream>
@@ -6,6 +7,7 @@
 #include "config/ClientConfig.hpp"
 #include "security/Password.hpp"
 #include <cstdint>
+#include <string_view>
 #include <thread>
 #include <stdexcept>
 
@@ -158,7 +160,37 @@ namespace {
 
         res.set_content(html, "text/html; charset=utf-8");
     }
+    std::optional<std::string> sessionCookie(
+        const httplib::Request& req
+    ) {
+        if (!req.has_header("Cookie")) {
+            return std::nullopt;
+        }
+        const std::string cookieHeader = req.get_header_value("Cookie");
+        std::string_view cookies{cookieHeader};
+        constexpr std::string_view name = "awg_session=";
 
+        while (!cookies.empty()) {
+            const auto end = cookies.find(';');
+            auto cookie = cookies.substr(0, end);
+
+            cookie.remove_prefix(
+                std::min(cookie.find_first_not_of(' '), cookie.size())
+            );
+
+            if (cookie.starts_with(name)) {
+                return std::string{cookie.substr(name.size())};
+            }
+
+            if (end == std::string_view::npos) {
+                break;
+            }
+
+            cookies.remove_prefix(end + 1);
+        }
+
+        return std::nullopt;
+    }
 }
 
 
@@ -338,21 +370,30 @@ void HttpServer::registerAdminRoutes() {
                 return Result::Handled;
             }
 
-            // Форма входа и её статические файлы.
-            if (req.path == "/api/auth/login" && req.method == "POST") {
+            // Эти маршруты сами управляют авторизацией.
+            if ((req.path == "/api/auth/login" && req.method == "POST") ||
+                (req.path == "/api/auth/me" && req.method == "GET") ||
+                (req.path == "/api/auth/logout" && req.method == "POST")) {
                 return Result::Unhandled;
             }
 
-            if (req.method == "GET" || req.method == "HEAD") {
-                if (req.path != "/api" &&
-                    !req.path.starts_with("/api/")) {
-                    return Result::Unhandled;
-                }
+            // Разрешаем загрузку React и статических файлов.
+            if ((req.method == "GET" || req.method == "HEAD") &&
+                req.path != "/api" &&
+                !req.path.starts_with("/api/")) {
+                return Result::Unhandled;
             }
 
-            // Все остальные API пока закрыты.
-            res.status = 403;
-            return Result::Handled;
+            if (!authenticatedPeer(req)) {
+                res.status = 401;
+                res.set_content(
+                    R"({"error":"Требуется авторизация"})",
+                    "application/json"
+                );
+                return Result::Handled;
+            }
+
+            return Result::Unhandled;
         }
     );
 
@@ -467,50 +508,50 @@ void HttpServer::registerAdminRoutes() {
                 return;
             }
 
-            const auto publicKey =
-                data["publicKey"].get<std::string>();
+            const auto password = data["password"].get<std::string>();
 
-            const auto password =
-                data["password"].get<std::string>();
-
-            if (publicKey.empty() || publicKey.size() > 128 ||
-                password.empty() || password.size() > 256) {
+            if (password.empty() || password.size() > 256) {
                 res.status = 400;
-                res.set_content(
-                    R"({"error":"Некорректные данные"})",
-                    "application/json"
-                );
                 return;
             }
 
             std::optional<CreatedPeer> peer;
 
             if (devMode_) {
-                peer = store_.find(
-                    data["publicKey"].get<std::string>()
-                );
+                const auto publicKey = data["publicKey"].get<std::string>();
+
+                if (publicKey.empty() || publicKey.size() > 128) {
+                    res.status = 400;
+                    return;
+                }
+
+                peer = store_.find(publicKey);
             } else {
                 peer = store_.findAdminByIp(req.remote_addr);
             }
 
-            // В production входить можно только от имени
-            // административного peer, которому принадлежит VPN-IP.
-            const bool allowed =
-                peer &&
-                peer->isAdmin &&
-                peer->passwordHash.has_value() &&
-                (devMode_ ||
-                peer->allowedIps == req.remote_addr + "/32");
-
-            if (!allowed ||
+            if (!peer || !peer->isAdmin || !peer->passwordHash ||
                 !verifyPassword(password, *peer->passwordHash)) {
                 res.status = 401;
                 res.set_content(
-                    R"({"error":"Неверный ключ или пароль"})",
+                    R"({"error":"Ошибка авторизации"})",
                     "application/json"
                 );
                 return;
             }
+
+            const auto token = sessions_.create(peer->publicKey);
+
+            res.set_header(
+                "Set-Cookie",
+                "awg_session=" + token +
+                "; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400"
+            );
+
+            res.set_content(
+                nlohmann::json{{"name", peer->name}}.dump(),
+                "application/json"
+            );
 
             res.set_content(
                 nlohmann::json{
@@ -520,5 +561,70 @@ void HttpServer::registerAdminRoutes() {
             );
         }
     );
+    adminServer_.Get("/api/auth/me",
+        [this](const httplib::Request& req, httplib::Response& res) {
+            res.set_header("Cache-Control", "no-store");
 
+            const auto peer = authenticatedPeer(req);
+
+            if (!peer) {
+                res.status = 401;
+                return;
+            }
+
+            res.set_content(
+                nlohmann::json{
+                    {"name", peer->name},
+                    {"publicKey", peer->publicKey}
+                }.dump(),
+                "application/json"
+            );
+        }
+    );
+
+    adminServer_.Post("/api/auth/logout",
+        [this](const httplib::Request& req, httplib::Response& res) {
+            if (const auto token = sessionCookie(req)) {
+                sessions_.remove(*token);
+            }
+
+            res.set_header(
+                "Set-Cookie",
+                "awg_session=; Path=/; HttpOnly; "
+                "SameSite=Strict; Max-Age=0"
+            );
+            res.set_header("Cache-Control", "no-store");
+            res.status = 204;
+        }
+    );
+}
+
+
+std::optional<CreatedPeer> HttpServer::authenticatedPeer(
+    const httplib::Request& req
+) {
+    const auto token = sessionCookie(req);
+
+    if (!token) {
+        return std::nullopt;
+    }
+
+    const auto publicKey = sessions_.find(*token);
+
+    if (!publicKey) {
+        return std::nullopt;
+    }
+
+    const auto peer = store_.find(*publicKey);
+
+    if (!peer || !peer->isAdmin) {
+        return std::nullopt;
+    }
+
+    if (!devMode_ &&
+        peer->allowedIps != req.remote_addr + "/32") {
+        return std::nullopt;
+    }
+
+    return peer;
 }

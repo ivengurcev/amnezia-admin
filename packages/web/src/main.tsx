@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import LoginForm from './LoginForm';
+import LoginForm from './LoginForm.tsx';
 import './styles.css';
 
 const root = document.getElementById('root');

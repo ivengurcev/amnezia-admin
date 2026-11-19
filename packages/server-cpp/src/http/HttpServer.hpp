@@ -7,6 +7,8 @@
 #include "peers/PeerService.hpp"
 #include "peers/PeerStore.hpp"
 #include "links/LinkService.hpp"
+#include "security/SessionStore.hpp"
+#include <optional>
 
 class HttpServer {
 public:
@@ -41,4 +43,8 @@ private:
     std::string endpointHost_;
     std::string setupBaseUrl_;
     bool devMode_;
+    SessionStore sessions_;
+    std::optional<CreatedPeer> authenticatedPeer(
+        const httplib::Request& req
+    );
 };
