@@ -12,6 +12,45 @@
 #include <cstdlib>
 #include <string>
 
+#include <ifaddrs.h>
+#include <arpa/inet.h>
+#include <cstring>
+#include <memory>
+#include <stdexcept>
+
+std::string getInterfaceIp(const std::string& interfaceName) {
+    ifaddrs* raw = nullptr;
+
+    if (getifaddrs(&raw) != 0) {
+        throw std::runtime_error{"Cannot read network interfaces"};
+    }
+
+    std::unique_ptr<ifaddrs, decltype(&freeifaddrs)> addresses{
+        raw, freeifaddrs
+    };
+
+    for (auto* item = addresses.get(); item; item = item->ifa_next) {
+        if (!item->ifa_addr ||
+            item->ifa_addr->sa_family != AF_INET ||
+            interfaceName != item->ifa_name) {
+            continue;
+        }
+
+        char ip[INET_ADDRSTRLEN];
+
+        auto* address = reinterpret_cast<sockaddr_in*>(item->ifa_addr);
+
+        if (inet_ntop(AF_INET, &address->sin_addr, ip, sizeof(ip))) {
+            return ip;
+        }
+    }
+
+    throw std::runtime_error{
+        "IPv4 address not found for interface: " + interfaceName
+    };
+}
+
+
 int main(int argc, char* argv[]) {
     std::signal(SIGPIPE, SIG_IGN);
     std::cout << std::unitbuf;
@@ -26,6 +65,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "AWG_INTERFACE is required\n";
         return 1;
     }
+
 
     std::cout << "Start" << '\n';
     AwgDriver awg{interfaceName};
@@ -45,6 +85,8 @@ int main(int argc, char* argv[]) {
     HttpServer server{
         "0.0.0.0",
         3000,
+        getInterfaceIp(interfaceName),
+        3002,
         awg,
         peer,
         store,

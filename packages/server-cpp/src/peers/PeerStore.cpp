@@ -160,3 +160,17 @@ std::optional<CreatedPeer> PeerStore::find(const std::string& publicKey) {
         passwordHash    
     };
 }
+
+bool PeerStore::isAdminIp(const std::string& ip) {
+    std::lock_guard lock{mutex_};
+
+    SQLite::Statement query{
+        db_,
+        "SELECT 1 FROM peers "
+        "WHERE allowed_ips = ? AND is_admin = 1"
+    };
+
+    query.bind(1, ip + "/32");
+
+    return query.executeStep();
+}

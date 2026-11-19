@@ -5,6 +5,7 @@
 #include <string>
 #include "config/ClientConfig.hpp"
 #include <cstdint>
+#include <thread>
 
 
 namespace {
@@ -162,6 +163,8 @@ namespace {
 HttpServer::HttpServer(        
     const std::string& host,
     int port,
+    const std::string& adminHost,
+    int adminPort,    
     AwgDriver& awg,
     PeerService& peer,
     PeerStore& store,
@@ -171,6 +174,8 @@ HttpServer::HttpServer(
 ): 
     host_(host), 
     port_(port), 
+    adminHost_(adminHost),
+    adminPort_(adminPort),
     awg_(awg),
     peer_(peer),
     store_(store),
@@ -178,115 +183,49 @@ HttpServer::HttpServer(
     endpointHost_(endpointHost),
     setupBaseUrl_(setupBaseUrl)     
 {
-    server_.set_socket_options([](auto sock) {
+    publicServer_.set_socket_options([](auto sock) {
         httplib::set_socket_opt(sock, SOL_SOCKET, SO_REUSEADDR, 1);
     });    
 }
 
 
 bool HttpServer::run() {
+    registerPublicRoutes();
+    registerAdminRoutes();
 
-    server_.set_exception_handler(
-        [](const httplib::Request&, httplib::Response& res, std::exception_ptr ep) {
-            try {
-                std::rethrow_exception(ep);
-            } catch (const std::exception& e) {
-                std::cerr << "HTTP error: " << e.what() << '\n';
-            } catch (...) {
-                std::cerr << "Unknown HTTP error\n";
-            }
+    // Существующий обработчик исключений нужно
+    // зарегистрировать для обоих серверов.
 
-            res.status = 500;
-            res.set_content(
-                R"({"error":"Internal Server Error"})",
-                "application/json"
-            );
+    if (!adminServer_.bind_to_port(adminHost_, adminPort_)) {
+        std::cerr << "Failed to bind admin server\n";
+        return false;
+    }
+
+    if (!publicServer_.bind_to_port(host_, port_)) {
+        std::cerr << "Failed to bind public server\n";
+        return false;
+    }
+
+    std::thread adminThread{[this] {
+        if (!adminServer_.listen_after_bind()) {
+            std::cerr << "Admin server stopped or failed\n";
         }
-    );
+    }};
 
-    server_.Get("/api/status", [this](const httplib::Request&, httplib::Response& res) {
-        auto port = awg_.getListenPort();
-        res.set_content(R"({"listenPort":)" + std::to_string(port) + "}", "application/json");
-    });
+    const bool publicOk = publicServer_.listen_after_bind();
 
-    server_.Get("/api/peers", [this](const httplib::Request&, httplib::Response& res) {
-        auto peers = awg_.getPeersInfo();
-        nlohmann::json data = nlohmann::json::array();
+    adminServer_.stop();
+    adminThread.join();
 
-        for (const auto& peer : peers) {
-            data.push_back({
-                {"publicKey", peer.publicKey},
-                {"endpoint", peer.endpoint},
-                {"allowedIps", peer.allowedIps},
-                {"latestHandshake", peer.latestHandshake},
-                {"rx", peer.rx},
-                {"tx", peer.tx}
-            });
-        }
+    return publicOk;
+}
 
-        res.set_content(data.dump(), "application/json");
-    });
-    server_.Post("/api/peers", [this](const httplib::Request&, httplib::Response& res) {
-        auto created = peer_.createPeer();
-        nlohmann::json data = {
-            {"publicKey", created.publicKey},
-            {"privateKey", created.privateKey},
-            {"allowedIps", created.allowedIps}
-        };    
-        res.status = 201;
-        res.set_content(data.dump(), "application/json");
-    });
-    server_.Delete("/api/peers", [this](const httplib::Request& req, httplib::Response& res) {
-        auto data = nlohmann::json::parse(req.body);
-        auto publicKey = data.at("publicKey").get<std::string>();
+void HttpServer::registerPublicRoutes() {
+    // GET /setup/:token
+    // POST /setup/:token/redeem
+    
 
-        peer_.removePeer(publicKey);
-        res.status = 204;
-    });
-
-    server_.Post("/api/peers/links",
-        [this](const httplib::Request& req, httplib::Response& res) {
-            auto data = nlohmann::json::parse(req.body, nullptr, false);
-
-            if (!data.is_object()
-                || !data.contains("publicKey")
-                || !data["publicKey"].is_string()
-                || !data.contains("ttlSeconds")
-                || !data["ttlSeconds"].is_number_integer()) {
-                res.status = 400;
-                res.set_content(R"({"error":"Invalid request"})", "application/json");
-                return;
-            }
-
-            auto publicKey = data["publicKey"].get<std::string>();
-            auto ttl = data["ttlSeconds"].get<std::int64_t>();
-
-            if (ttl <= 0) {
-                res.status = 400;
-                res.set_content(R"({"error":"Invalid TTL"})", "application/json");
-                return;
-            }
-
-            if (!store_.find(publicKey)) {
-                res.status = 404;
-                res.set_content(R"({"error":"Peer not found"})", "application/json");
-                return;
-            }
-
-            auto token = links_.create(publicKey, ttl);
-            auto url = setupBaseUrl_ + "/setup/" + token;
-
-            res.status = 201;
-            res.set_header("Cache-Control", "no-store");
-            res.set_content(
-                nlohmann::json{{"url", url}}.dump(),
-                "application/json"
-            );
-        }
-    );
-
-    // 
-    server_.Get(R"(/setup/([0-9a-f]{64}))",
+    publicServer_.Get(R"(/setup/([0-9a-f]{64}))",
         [this](const httplib::Request& req, httplib::Response& res) {
             const auto token = req.matches[1].str();
 
@@ -305,7 +244,7 @@ bool HttpServer::run() {
         }
     );
 
-    server_.Post(R"(/setup/([0-9a-f]{64})/redeem)",
+    publicServer_.Post(R"(/setup/([0-9a-f]{64})/redeem)",
         [this](const httplib::Request& req, httplib::Response& res) {
             const auto token = req.matches[1].str();
 
@@ -351,7 +290,131 @@ bool HttpServer::run() {
                 renderSetupPage(res, token, SetupPageState::Error);
             }
         }
+    );    
+}
+
+void HttpServer::registerAdminRoutes() {
+    adminServer_.set_exception_handler(
+        [](const httplib::Request&, httplib::Response& res, std::exception_ptr ep) {
+            try {
+                std::rethrow_exception(ep);
+            } catch (const std::exception& e) {
+                std::cerr << "HTTP error: " << e.what() << '\n';
+            } catch (...) {
+                std::cerr << "Unknown HTTP error\n";
+            }
+
+            res.status = 500;
+            res.set_content(
+                R"({"error":"Internal Server Error"})",
+                "application/json"
+            );
+        }
+    );    
+
+    adminServer_.Get("/health",
+        [](const httplib::Request&, httplib::Response& res) {
+            res.set_content("OK", "text/plain");
+        }
     );
 
-    return server_.listen(host_, port_);
+    adminServer_.set_pre_request_handler(
+        [this](const httplib::Request& req, httplib::Response& res) {
+            if (req.path == "/health") {
+                return httplib::Server::HandlerResponse::Unhandled;
+            }
+
+            if (!store_.isAdminIp(req.remote_addr)) {
+                res.status = 404;
+                return httplib::Server::HandlerResponse::Handled;
+            }
+
+            // Peer административный, но пароль пока не проверен.
+            res.status = 403;
+            return httplib::Server::HandlerResponse::Handled;
+        }
+    );
+
+    adminServer_.Get("/api/status", [this](const httplib::Request&, httplib::Response& res) {
+        auto port = awg_.getListenPort();
+        res.set_content(R"({"listenPort":)" + std::to_string(port) + "}", "application/json");
+    });
+
+    adminServer_.Get("/api/peers", [this](const httplib::Request&, httplib::Response& res) {
+        auto peers = awg_.getPeersInfo();
+        nlohmann::json data = nlohmann::json::array();
+
+        for (const auto& peer : peers) {
+            data.push_back({
+                {"publicKey", peer.publicKey},
+                {"endpoint", peer.endpoint},
+                {"allowedIps", peer.allowedIps},
+                {"latestHandshake", peer.latestHandshake},
+                {"rx", peer.rx},
+                {"tx", peer.tx}
+            });
+        }
+
+        res.set_content(data.dump(), "application/json");
+    });
+
+    adminServer_.Post("/api/peers", [this](const httplib::Request&, httplib::Response& res) {
+        auto created = peer_.createPeer();
+        nlohmann::json data = {
+            {"publicKey", created.publicKey},
+            {"privateKey", created.privateKey},
+            {"allowedIps", created.allowedIps}
+        };    
+        res.status = 201;
+        res.set_content(data.dump(), "application/json");
+    });
+    
+    adminServer_.Delete("/api/peers", [this](const httplib::Request& req, httplib::Response& res) {
+        auto data = nlohmann::json::parse(req.body);
+        auto publicKey = data.at("publicKey").get<std::string>();
+
+        peer_.removePeer(publicKey);
+        res.status = 204;
+    });
+
+    adminServer_.Post("/api/peers/links",
+        [this](const httplib::Request& req, httplib::Response& res) {
+            auto data = nlohmann::json::parse(req.body, nullptr, false);
+
+            if (!data.is_object()
+                || !data.contains("publicKey")
+                || !data["publicKey"].is_string()
+                || !data.contains("ttlSeconds")
+                || !data["ttlSeconds"].is_number_integer()) {
+                res.status = 400;
+                res.set_content(R"({"error":"Invalid request"})", "application/json");
+                return;
+            }
+
+            auto publicKey = data["publicKey"].get<std::string>();
+            auto ttl = data["ttlSeconds"].get<std::int64_t>();
+
+            if (ttl <= 0) {
+                res.status = 400;
+                res.set_content(R"({"error":"Invalid TTL"})", "application/json");
+                return;
+            }
+
+            if (!store_.find(publicKey)) {
+                res.status = 404;
+                res.set_content(R"({"error":"Peer not found"})", "application/json");
+                return;
+            }
+
+            auto token = links_.create(publicKey, ttl);
+            auto url = setupBaseUrl_ + "/setup/" + token;
+
+            res.status = 201;
+            res.set_header("Cache-Control", "no-store");
+            res.set_content(
+                nlohmann::json{{"url", url}}.dump(),
+                "application/json"
+            );
+        }
+    );    
 }

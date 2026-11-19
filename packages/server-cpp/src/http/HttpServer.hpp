@@ -13,6 +13,8 @@ public:
     HttpServer(
         const std::string& host,
         int port,
+        const std::string& adminHost,
+        int adminPort,
         AwgDriver& awg,
         PeerService& peer,
         PeerStore& store,
@@ -21,11 +23,16 @@ public:
         const std::string& setupBaseUrl
     );
     bool run();
+    void registerPublicRoutes();
+    void registerAdminRoutes();
 
 private:
-    httplib::Server server_;
+    httplib::Server publicServer_;
+    httplib::Server adminServer_;
     std::string host_;
     int port_;
+    std::string adminHost_;
+    int adminPort_;    
     AwgDriver& awg_;
     PeerService& peer_;
     PeerStore& store_;
