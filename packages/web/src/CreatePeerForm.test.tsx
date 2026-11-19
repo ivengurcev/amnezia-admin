@@ -56,13 +56,29 @@ describe('create connection modal', () => {
         expect(await screen.findByLabelText('Одноразовая ссылка')).toHaveValue(link);
         expect(fetchMock.mock.calls.map(call => call[0])).toEqual(['/api/peers', '/api/peers/links', '/api/peers/links']);
     });
-    it.each(['', '   ', 'x'.repeat(101)])('rejects invalid name %j', async name => {
+    it.each(['', '   '])('creates a connection with optional name %j', async name => {
+        const user = userEvent.setup();
+        const fetchMock = vi.fn()
+            .mockResolvedValueOnce(json({ publicKey: peer.publicKey }, 201))
+            .mockResolvedValueOnce(json({ url: link }, 201));
+        vi.stubGlobal('fetch', fetchMock);
+        render(<CreatePeerForm onCreated={vi.fn()} onClose={vi.fn()} />);
+        const input = screen.getByLabelText('Имя подключения');
+        expect(input).not.toBeRequired();
+        if (name) await user.type(input, name);
+        await user.click(createButton());
+        expect(await screen.findByLabelText('Одноразовая ссылка')).toHaveValue(link);
+        expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/peers', expect.objectContaining({
+            body: JSON.stringify({ name: '' }),
+        }));
+    });
+    it.each(['x'.repeat(101)])('rejects invalid name %j', async name => {
         const user = userEvent.setup();
         const fetchMock = vi.fn(); vi.stubGlobal('fetch', fetchMock);
         render(<CreatePeerForm onCreated={vi.fn()} onClose={vi.fn()} />);
         if (name) await user.type(screen.getByLabelText('Имя подключения'), name);
         await user.click(createButton());
-        expect(screen.getByRole('alert')).toHaveTextContent('Имя должно содержать от 1 до 100 символов');
+        expect(screen.getByRole('alert')).toHaveTextContent('Имя должно содержать не более 100 символов');
         expect(fetchMock).not.toHaveBeenCalled();
     });
     it('blocks duplicate submission and closing while creating', async () => {

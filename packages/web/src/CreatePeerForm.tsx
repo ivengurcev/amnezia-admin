@@ -21,8 +21,8 @@ export default function CreatePeerForm({ onCreated, onClose }: Props) {
         event.preventDefault();
         if (submitting || publicKey) return;
         const normalizedName = name.trim();
-        if (!normalizedName || normalizedName.length > 100) {
-            setError('Имя должно содержать от 1 до 100 символов');
+        if (normalizedName.length > 100) {
+            setError('Имя должно содержать не более 100 символов');
             return;
         }
         setSubmitting(true); setError(null);

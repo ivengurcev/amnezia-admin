@@ -13,6 +13,7 @@ import styles from './PeerRow.module.css';
 type Props = { peer: Peer; onChanged: () => Promise<void> };
 
 export default function PeerRow({ peer, onChanged }: Props) {
+    const displayName = peer.name.trim() || formatVpnIp(peer.allowedIps);
     const [operation, setOperation] = useState<'link' | 'delete' | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [linkOpen, setLinkOpen] = useState(false);
@@ -36,7 +37,7 @@ export default function PeerRow({ peer, onChanged }: Props) {
     }
 
     async function handleDelete() {
-        if (operation || !window.confirm(`Удалить подключение «${peer.name}»?`)) return;
+        if (operation || !window.confirm(`Удалить подключение «${displayName}»?`)) return;
         setOperation('delete'); setError(null);
         try {
             await deletePeer(peer.publicKey);
@@ -53,7 +54,7 @@ export default function PeerRow({ peer, onChanged }: Props) {
                 <Icon name={connected ? 'online' : 'offline'} label={connected ? 'Подключён' : 'Не подключён'} />
             </span>
             <div className={styles.name}>
-                <strong title={peer.name}>{peer.name}</strong>
+                <strong title={displayName}>{displayName}</strong>
                 <span className={peer.isAdmin ? styles.admin : styles.user}>
                     <Icon name={peer.isAdmin ? 'admin' : 'user'} label={peer.isAdmin ? 'Администратор' : 'Пользователь'} />
                 </span>

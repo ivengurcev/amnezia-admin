@@ -24,6 +24,20 @@ describe('PeerRow', () => {
         for (const button of buttons) expect(button.querySelector('svg')).not.toBeNull();
         expect(screen.queryByRole('button', { name: 'Переименовать' })).toBeNull();
     });
+    it.each([['', '10.90.0.2'], ['   ', '10.90.0.2'], ['  Телефон  ', 'Телефон']])(
+        'displays normalized name or VPN IP for %j', (name, expected) => {
+            const { container } = render(<PeerRow peer={{ ...peer, name }} onChanged={vi.fn()} />);
+            expect(container.querySelector('strong')).toHaveTextContent(expected);
+            expect(container.querySelector('strong')).toHaveAttribute('title', expected);
+        },
+    );
+    it('uses VPN IP when confirming deletion of an unnamed connection', async () => {
+        const user = userEvent.setup();
+        vi.spyOn(window, 'confirm').mockReturnValue(false);
+        render(<PeerRow peer={{ ...peer, name: '   ' }} onChanged={vi.fn()} />);
+        await user.click(screen.getByRole('button', { name: 'Удалить подключение' }));
+        expect(window.confirm).toHaveBeenCalledWith('Удалить подключение «10.90.0.2»?');
+    });
     it('ages status without a server refresh', () => {
         vi.useFakeTimers(); vi.setSystemTime(1000 * 1000);
         render(<PeerRow peer={{ ...peer, latestHandshake: 821 }} onChanged={vi.fn()} />);

@@ -448,16 +448,57 @@ void HttpServer::registerAdminRoutes() {
         }
     );
 
-    adminServer_.Post("/api/peers", [this](const httplib::Request&, httplib::Response& res) {
-        auto created = peer_.createPeer();
-        nlohmann::json data = {
-            {"publicKey", created.publicKey},
-            {"privateKey", created.privateKey},
-            {"allowedIps", created.allowedIps}
-        };    
-        res.status = 201;
-        res.set_content(data.dump(), "application/json");
-    });
+
+    adminServer_.Post("/api/peers",
+        [this](const httplib::Request& req, httplib::Response& res) {
+            const auto data = nlohmann::json::parse(
+                req.body, nullptr, false
+            );
+
+            if (!data.is_object() ||
+                (data.contains("name") && !data["name"].is_string())) {
+                res.status = 400;
+                res.set_content(
+                    R"({"error":"Некорректное имя подключения"})",
+                    "application/json"
+                );
+                return;
+            }
+
+            std::string name = data.value("name", std::string{});
+
+            const auto first = name.find_first_not_of(" \t\n\r");
+
+            name = first == std::string::npos
+                ? ""
+                : name.substr(
+                    first,
+                    name.find_last_not_of(" \t\n\r") - first + 1
+                );
+
+            if (name.size() > 400) {
+                res.status = 400;
+                res.set_content(
+                    R"({"error":"Слишком длинное имя"})",
+                    "application/json"
+                );
+                return;
+            }
+
+            const auto created = peer_.createPeer(name);
+
+            res.status = 201;
+            res.set_content(
+                nlohmann::json{
+                    {"publicKey", created.publicKey},
+                    {"allowedIps", created.allowedIps},
+                    {"name", created.name}
+                }.dump(),
+                "application/json"
+            );
+        }
+    );
+
 
     adminServer_.Delete("/api/peers", [this](const httplib::Request& req, httplib::Response& res) {
         auto data = nlohmann::json::parse(req.body);
