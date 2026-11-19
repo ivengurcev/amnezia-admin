@@ -3,29 +3,30 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { checkCredentials } from './api';
 
-export default function LoginForm() {
+type LoginFormProps = {
+    onLogin: () => void;
+};
+
+export default function LoginForm({ onLogin }: LoginFormProps) {
     const [publicKey, setPublicKey] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const [authenticatedName, setAuthenticatedName] =
-        useState<string | null>(null);
 
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
         setError('');
-        setAuthenticatedName(null);
         setLoading(true);
 
         try {
-            const result = await checkCredentials(
+            await checkCredentials(
                 publicKey.trim(),
                 password,
             );
 
-            setAuthenticatedName(result.name);
             setPassword('');
+            onLogin();
         } catch (err) {
             setError(
                 err instanceof Error
@@ -89,12 +90,6 @@ export default function LoginForm() {
                         {error && (
                             <p className="form-error" role="alert">
                                 {error}
-                            </p>
-                        )}
-
-                        {authenticatedName && (
-                            <p className="message" role="status">
-                                Пароль подтверждён: {authenticatedName}
                             </p>
                         )}
 

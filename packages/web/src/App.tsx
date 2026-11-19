@@ -15,8 +15,11 @@ function getErrorMessage(error: unknown): string {
         ? error.message
         : 'Не удалось выполнить запрос';
 }
+type AppProps = {
+    onLogout?: () => void;
+};
 
-export default function App() {
+export default function App({ onLogout }: AppProps) {
     const [peers, setPeers] = useState<Peer[] | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [refreshing, setRefreshing] = useState(false);
@@ -61,6 +64,16 @@ export default function App() {
             <header className="topbar">
                 <div className="topbar__content">
                     <span className="brand">Amnezia Admin</span>
+
+                    {onLogout && (
+                        <button
+                            className="button--secondary"
+                            type="button"
+                            onClick={onLogout}
+                        >
+                            Выйти
+                        </button>
+                    )}
                 </div>
             </header>
             <main className="page">

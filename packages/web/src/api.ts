@@ -98,3 +98,18 @@ export function checkCredentials(
         body: JSON.stringify({ publicKey, password }),
     });
 }
+
+export type AdminSession = {
+    name: string;
+    publicKey: string;
+};
+
+export function getSession(): Promise<AdminSession> {
+    return request<AdminSession>('/api/auth/me');
+}
+
+export function logout(): Promise<void> {
+    return request<void>('/api/auth/logout', {
+        method: 'POST',
+    });
+}

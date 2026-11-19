@@ -74,6 +74,10 @@ input:focus-visible {
     min-height: 64px;
 }
 
+.topbar__content > button {
+    margin-left: auto;
+}
+
 .brand {
     font-size: 1.125rem;
     font-weight: 700;
