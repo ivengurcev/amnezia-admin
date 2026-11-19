@@ -1,209 +1,77 @@
-import {
-    useState,
-} from 'react';
-import type { FormEvent } from 'react';
-
-import {
-    deletePeer,
-    renamePeer,
-} from './api';
+import { useEffect, useState } from 'react';
+import { createPeerLink, deletePeer } from './api';
 import type { Peer } from './api';
-import { formatBytes, formatHandshake } from './format';
+import { formatBytes, formatHandshake, formatVpnIp, isConnected } from './format';
+import LinkResult from './LinkResult';
+import Button from './ui/Button';
+import IconButton from './ui/IconButton';
+import Modal from './ui/Modal';
+import layout from './Layout.module.css';
+import styles from './PeerRow.module.css';
 
-type PeerRowProps = {
-    peer: Peer;
-    onChanged: () => Promise<void>;
-};
+type Props = { peer: Peer; onChanged: () => Promise<void> };
 
-type Operation = 'rename' | 'delete' | null;
-
-const nameError = 'Имя должно содержать от 1 до 100 символов';
-const unavailableTitle = 'Действия недоступны: у peer нет API UUID';
-
-function getErrorMessage(error: unknown): string {
-    return error instanceof Error
-        ? error.message
-        : 'Не удалось выполнить операцию';
-}
-
-export default function PeerRow({
-    peer,
-    onChanged,
-}: PeerRowProps) {
-    const [editing, setEditing] = useState(false);
-    const [draftName, setDraftName] = useState(peer.name);
-    const [operation, setOperation] = useState<Operation>(null);
+export default function PeerRow({ peer, onChanged }: Props) {
+    const [operation, setOperation] = useState<'link' | 'delete' | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [linkOpen, setLinkOpen] = useState(false);
+    const [linkError, setLinkError] = useState<string | null>(null);
+    const [url, setUrl] = useState<string | null>(null);
+    const [now, setNow] = useState(Date.now);
 
-    const actionsDisabled = !peer.id || operation !== null;
+    useEffect(() => {
+        const timer = window.setInterval(() => setNow(Date.now()), 1000);
+        return () => window.clearInterval(timer);
+    }, []);
 
-    async function handleRename(
-        event: FormEvent<HTMLFormElement>,
-    ): Promise<void> {
-        event.preventDefault();
-
-        if (!peer.id) {
-            return;
-        }
-
-        const normalizedName = draftName.trim();
-
-        if (
-            normalizedName.length === 0 ||
-            normalizedName.length > 100
-        ) {
-            setError(nameError);
-            return;
-        }
-
-        setOperation('rename');
-        setError(null);
-
+    async function issueLink() {
+        if (operation) return;
+        setLinkOpen(true); setLinkError(null); setUrl(null); setOperation('link');
         try {
-            await renamePeer(peer.id, normalizedName);
-            await onChanged();
-            setEditing(false);
-        } catch (requestError) {
-            setError(getErrorMessage(requestError));
-        } finally {
-            setOperation(null);
-        }
+            setUrl((await createPeerLink(peer.publicKey)).url);
+        } catch (err) {
+            setLinkError(err instanceof Error ? err.message : 'Не удалось получить ссылку');
+        } finally { setOperation(null); }
     }
 
-    async function handleDelete(): Promise<void> {
-        if (
-            !peer.id ||
-            !window.confirm(`Удалить peer «${peer.name}»?`)
-        ) {
-            return;
-        }
-
-        setOperation('delete');
-        setError(null);
-
+    async function handleDelete() {
+        if (operation || !window.confirm(`Удалить подключение «${peer.name}»?`)) return;
+        setOperation('delete'); setError(null);
         try {
-            await deletePeer(peer.id);
+            await deletePeer(peer.publicKey);
             await onChanged();
-        } catch (requestError) {
-            setError(getErrorMessage(requestError));
-        } finally {
-            setOperation(null);
-        }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Не удалось удалить подключение');
+        } finally { setOperation(null); }
     }
 
-    return (
-        <article className="peer-row">
-            <div
-                className="peer-cell peer-cell--name"
-                data-label="Имя"
-            >
-                <span className="visually-hidden">Имя:</span>
-                {editing ? (
-                    <form
-                        className="rename-form"
-                        onSubmit={handleRename}
-                    >
-                        <label className="visually-hidden" htmlFor={
-                            `peer-name-${peer.publicKey}`
-                        }>
-                            Новое имя
-                        </label>
-                        <input
-                            id={`peer-name-${peer.publicKey}`}
-                            value={draftName}
-                            onChange={(event) => {
-                                setDraftName(event.target.value);
-                                setError(null);
-                            }}
-                            disabled={operation !== null}
-                        />
-                        <button
-                            className="button--primary"
-                            type="submit"
-                            disabled={operation !== null}
-                        >
-                            {operation === 'rename'
-                                ? 'Сохранение…'
-                                : 'Сохранить'}
-                        </button>
-                        <button
-                            className="button--secondary"
-                            type="button"
-                            disabled={operation !== null}
-                            onClick={() => {
-                                setDraftName(peer.name);
-                                setEditing(false);
-                                setError(null);
-                            }}
-                        >
-                            Отмена
-                        </button>
-                    </form>
-                ) : (
-                    <strong>{peer.name}</strong>
-                )}
+    const connected = isConnected(peer.latestHandshake, now);
+    return <>
+        <article className={styles.row} aria-label={peer.name}>
+            <div className={styles.cell}><span className={styles.label}>Имя:</span><strong>{peer.name}</strong></div>
+            <div className={styles.cell}><span className={styles.label}>VPN-IP:</span><span>{formatVpnIp(peer.allowedIps)}</span></div>
+            <div className={styles.cell}><span className={styles.label}>Права:</span><span>{peer.isAdmin ? 'Администратор' : 'Пользователь'}</span></div>
+            <div className={styles.cell}><span className={styles.label}>Статус:</span>
+                <span className={`${styles.status} ${connected ? styles.online : ''}`}>{connected ? 'Подключён' : 'Не подключён'}</span>
             </div>
-            <div className="peer-cell" data-label="Адрес">
-                <span className="visually-hidden">Адрес:</span>
-                {peer.address}
+            <div className={styles.cell}><span className={styles.label}>Handshake:</span><span>{formatHandshake(peer.latestHandshake)}</span></div>
+            <div className={styles.cell}><span className={styles.label}>RX:</span><span>{formatBytes(peer.rx)}</span></div>
+            <div className={styles.cell}><span className={styles.label}>TX:</span><span>{formatBytes(peer.tx)}</span></div>
+            <div className={styles.actions}>
+                <IconButton icon="link" label="Создать одноразовую ссылку" disabled={operation !== null} onClick={() => void issueLink()} />
+                <IconButton icon="delete" label="Удалить подключение" variant="danger" disabled={operation !== null} onClick={() => void handleDelete()} />
             </div>
-            <div className="peer-cell" data-label="Статус">
-                <span className="visually-hidden">Статус:</span>
-                <span className={
-                    `status status--${peer.connected
-                        ? 'online'
-                        : 'offline'}`
-                }>
-                    {peer.connected
-                        ? 'Подключён'
-                        : 'Не подключён'}
-                </span>
-            </div>
-            <div className="peer-cell" data-label="Handshake">
-                <span className="visually-hidden">Handshake:</span>
-                {formatHandshake(peer.latestHandshakeAt)}
-            </div>
-            <div className="peer-cell" data-label="RX">
-                <span className="visually-hidden">RX:</span>
-                {formatBytes(peer.rxBytes)}
-            </div>
-            <div className="peer-cell" data-label="TX">
-                <span className="visually-hidden">TX:</span>
-                {formatBytes(peer.txBytes)}
-            </div>
-            <div
-                className="peer-actions"
-                data-label="Действия"
-                title={peer.id ? undefined : unavailableTitle}
-            >
-                <button
-                    className="button--secondary"
-                    type="button"
-                    disabled={actionsDisabled}
-                    onClick={() => {
-                        setDraftName(peer.name);
-                        setEditing(true);
-                        setError(null);
-                    }}
-                >
-                    Переименовать
-                </button>
-                <button
-                    className="button--danger"
-                    type="button"
-                    disabled={actionsDisabled}
-                    onClick={() => void handleDelete()}
-                >
-                    {operation === 'delete'
-                        ? 'Удаление…'
-                        : 'Удалить'}
-                </button>
-            </div>
-            {error && (
-                <div className="peer-error" role="alert">
-                    {error}
-                </div>
-            )}
+            {error && <p className={styles.error} role="alert">{error}</p>}
         </article>
-    );
+        {linkOpen && <Modal title="Одноразовая ссылка" busy={operation === 'link'} onClose={() => setLinkOpen(false)}>
+            {url ? <LinkResult url={url} onClose={() => setLinkOpen(false)} /> : <>
+                {operation === 'link' && <p role="status">Получение ссылки…</p>}
+                {linkError && <p className={layout.errorText} role="alert">{linkError}</p>}
+                <div className={layout.actions}>
+                    {linkError && <Button variant="primary" onClick={() => void issueLink()}>Повторить получение ссылки</Button>}
+                    <Button disabled={operation === 'link'} onClick={() => setLinkOpen(false)}>Закрыть</Button>
+                </div>
+            </>}
+        </Modal>}
+    </>;
 }

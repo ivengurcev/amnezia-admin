@@ -1,0 +1,19 @@
+.dialog {
+    width: min(var(--modal-width), calc(100% - var(--space-8)));
+    max-width: none;
+    max-height: calc(100dvh - var(--space-8));
+    overflow: auto;
+    margin: auto;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 0;
+    color: var(--color-text);
+    background: var(--surface-panel);
+    box-shadow: var(--shadow-modal);
+}
+.dialog::backdrop { background: var(--surface-overlay); }
+.content { display: grid; min-width: 0; gap: var(--space-6); padding: var(--space-6); }
+@media (max-width: 480px) {
+    .dialog { width: calc(100% - var(--space-4)); max-height: calc(100dvh - var(--space-4)); }
+    .content { padding: var(--space-4); gap: var(--space-4); }
+}

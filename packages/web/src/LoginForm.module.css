@@ -1,0 +1,2 @@
+.panel { max-width: var(--auth-width); margin: var(--space-8) auto 0; }
+.form { padding: var(--space-6); }

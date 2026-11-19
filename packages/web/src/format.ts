@@ -6,7 +6,7 @@ const dateFormatter = new Intl.DateTimeFormat('ru-RU', {
 });
 
 export function formatBytes(bytes: number): string {
-    if (bytes <= 0) {
+    if (!Number.isFinite(bytes) || bytes <= 0) {
         return '0 Б';
     }
 
@@ -21,14 +21,21 @@ export function formatBytes(bytes: number): string {
     }).format(value)} ${byteUnits[unitIndex]}`;
 }
 
-export function formatHandshake(value: string | null): string {
-    if (!value) {
-        return 'Нет данных';
-    }
+export function formatHandshake(value: number): string {
+    const date = new Date(value * 1000);
 
-    const date = new Date(value);
-
-    return Number.isNaN(date.getTime())
+    return !Number.isFinite(value) || value <= 0 || Number.isNaN(date.getTime())
         ? 'Нет данных'
         : dateFormatter.format(date);
+}
+
+export function isConnected(handshake: number, now = Date.now()): boolean {
+    const age = now / 1000 - handshake;
+    return handshake > 0 && Number.isFinite(handshake) && age >= 0 && age <= 180;
+}
+
+export function formatVpnIp(allowedIps: string): string {
+    return /^\d{1,3}(?:\.\d{1,3}){3}\/32$/.test(allowedIps)
+        ? allowedIps.slice(0, -3)
+        : allowedIps;
 }

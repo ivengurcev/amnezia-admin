@@ -2,10 +2,17 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { checkCredentials } from './api';
+import Shell from './Shell';
+import Button from './ui/Button';
+import Input from './ui/Input';
+import layout from './Layout.module.css';
+import styles from './LoginForm.module.css';
 
 type LoginFormProps = {
     onLogin: () => void;
 };
+
+
 
 export default function LoginForm({ onLogin }: LoginFormProps) {
     const [publicKey, setPublicKey] = useState('');
@@ -16,6 +23,7 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
+        if (loading) return;
         setError('');
         setLoading(true);
 
@@ -38,71 +46,22 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
         }
     }
 
-    return (
-        <>
-            <header className="topbar">
-                <div className="topbar__content">
-                    <span className="brand">Amnezia Admin</span>
+    return <Shell>
+        <section className={`${layout.panel} ${styles.panel}`}>
+            <div className={layout.panelHeader}>
+                <div>
+                    <p className={layout.eyebrow}>Администрирование VPN</p>
+                    <h1>Вход</h1>
                 </div>
-            </header>
-
-            <main className="page auth-page">
-                <section className="section">
-                    <div className="section__header">
-                        <div>
-                            <p className="eyebrow">Администрирование VPN</p>
-                            <h1>Вход</h1>
-                        </div>
-                    </div>
-
-                    <form className="auth-form" onSubmit={handleSubmit}>
-                        <div className="field">
-                            <label htmlFor="publicKey">
-                                Публичный ключ
-                            </label>
-                            <input
-                                id="publicKey"
-                                autoComplete="username"
-                                value={publicKey}
-                                onChange={(e) =>
-                                    setPublicKey(e.target.value)
-                                }
-                                required
-                            />
-                        </div>
-
-                        <div className="field">
-                            <label htmlFor="password">
-                                Пароль
-                            </label>
-                            <input
-                                id="password"
-                                type="password"
-                                autoComplete="current-password"
-                                value={password}
-                                onChange={(e) =>
-                                    setPassword(e.target.value)
-                                }
-                                required
-                            />
-                        </div>
-
-                        {error && (
-                            <p className="form-error" role="alert">
-                                {error}
-                            </p>
-                        )}
-
-                        <button
-                            className="button--primary"
-                            type="submit"
-                            disabled={loading}
-                        >
-                            {loading ? 'Проверка…' : 'Войти'}
-                        </button>
-                    </form>
-                </section>
-            </main>
-        </>
-    );
+            </div>
+            <form className={`${layout.form} ${styles.form}`} onSubmit={handleSubmit}>
+                <Input label="Публичный ключ" autoComplete="username" value={publicKey}
+                    onChange={event => setPublicKey(event.target.value)} disabled={loading} required />
+                <Input label="Пароль" type="password" autoComplete="current-password" value={password}
+                    onChange={event => setPassword(event.target.value)} disabled={loading} required />
+                {error && <p className={layout.errorText} role="alert">{error}</p>}
+                <Button variant="primary" type="submit" disabled={loading}>{loading ? 'Проверка…' : 'Войти'}</Button>
+            </form>
+        </section>
+    </Shell>;
 }

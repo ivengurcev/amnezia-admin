@@ -9,6 +9,10 @@ import { listPeers } from './api';
 import type { Peer } from './api';
 import CreatePeerForm from './CreatePeerForm';
 import PeerRow from './PeerRow';
+import Shell from './Shell';
+import Button from './ui/Button';
+import layout from './Layout.module.css';
+import rowStyles from './PeerRow.module.css';
 
 function getErrorMessage(error: unknown): string {
     return error instanceof Error
@@ -20,6 +24,7 @@ type AppProps = {
 };
 
 export default function App({ onLogout }: AppProps) {
+    const [creating, setCreating] = useState(false);
     const [peers, setPeers] = useState<Peer[] | null>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [refreshing, setRefreshing] = useState(false);
@@ -59,105 +64,34 @@ export default function App({ onLogout }: AppProps) {
         void loadPeers();
     }, [loadPeers]);
 
-    return (
-        <>
-            <header className="topbar">
-                <div className="topbar__content">
-                    <span className="brand">Amnezia Admin</span>
-
-                    {onLogout && (
-                        <button
-                            className="button--secondary"
-                            type="button"
-                            onClick={onLogout}
-                        >
-                            Выйти
-                        </button>
-                    )}
+    return <Shell onLogout={onLogout}>
+        <section className={layout.panel} aria-labelledby="peers-heading">
+            <div className={layout.panelHeader}>
+                <div>
+                    <p className={layout.eyebrow}>Управление доступом</p>
+                    <h1 id="peers-heading">Подключения</h1>
                 </div>
-            </header>
-            <main className="page">
-                <section
-                    className="section"
-                    aria-labelledby="peers-heading"
-                >
-                    <div className="section__header">
-                        <div>
-                            <p className="eyebrow">
-                                Управление доступом
-                            </p>
-                            <h1 id="peers-heading">Peers</h1>
-                        </div>
-                        <button
-                            className="button--secondary"
-                            type="button"
-                            onClick={() => void loadPeers(true)}
-                            disabled={refreshing}
-                        >
-                            {refreshing
-                                ? 'Обновление…'
-                                : 'Обновить'}
-                        </button>
-                    </div>
-
-                    <CreatePeerForm
-                        onCreated={() => loadPeers(true)}
-                    />
-
-                    {loadError && (
-                        <div
-                            className="message message--error"
-                            role="alert"
-                        >
-                            {loadError}
-                        </div>
-                    )}
-
-                    {peers === null && !loadError && (
-                        <p className="message">Загрузка peers…</p>
-                    )}
-
-                    {peers === null && loadError && (
-                        <div className="message">
-                            <button
-                                className="button--secondary"
-                                type="button"
-                                onClick={() => void loadPeers()}
-                            >
-                                Повторить
-                            </button>
-                        </div>
-                    )}
-
-                    {peers?.length === 0 && (
-                        <p className="message">Peers пока нет</p>
-                    )}
-
-                    {peers && peers.length > 0 && (
-                        <div className="peer-list">
-                            <div
-                                className="peer-header"
-                                aria-hidden="true"
-                            >
-                                <span>Имя</span>
-                                <span>Адрес</span>
-                                <span>Статус</span>
-                                <span>Handshake</span>
-                                <span>RX</span>
-                                <span>TX</span>
-                                <span>Действия</span>
-                            </div>
-                            {peers.map((peer) => (
-                                <PeerRow
-                                    key={peer.publicKey}
-                                    peer={peer}
-                                    onChanged={() => loadPeers(true)}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </section>
-            </main>
-        </>
-    );
+                <div className={layout.actions}>
+                    <Button onClick={() => void loadPeers(true)} disabled={refreshing}>
+                        {refreshing ? 'Обновление…' : 'Обновить'}
+                    </Button>
+                    <Button variant="primary" onClick={() => setCreating(true)}>Добавить подключение</Button>
+                </div>
+            </div>
+            {loadError && <div className={`${layout.message} ${layout.error}`} role="alert">{loadError}</div>}
+            {peers === null && !loadError && <p className={layout.message}>Загрузка подключений…</p>}
+            {peers === null && loadError && <div className={layout.message}>
+                <Button onClick={() => void loadPeers()}>Повторить</Button>
+            </div>}
+            {peers?.length === 0 && <p className={layout.message}>Подключений пока нет</p>}
+            {peers && peers.length > 0 && <div>
+                <div className={`${rowStyles.row} ${rowStyles.header}`} aria-hidden="true">
+                    <span>Имя</span><span>VPN-IP</span><span>Права</span><span>Статус</span>
+                    <span>Handshake</span><span>RX</span><span>TX</span><span>Действия</span>
+                </div>
+                {peers.map(peer => <PeerRow key={peer.publicKey} peer={peer} onChanged={() => loadPeers(true)} />)}
+            </div>}
+        </section>
+        {creating && <CreatePeerForm onCreated={() => loadPeers(true)} onClose={() => setCreating(false)} />}
+    </Shell>;
 }

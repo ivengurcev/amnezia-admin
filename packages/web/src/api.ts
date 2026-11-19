@@ -1,21 +1,17 @@
 export type Peer = {
-    id: string | null;
     publicKey: string;
     name: string;
-    address: string;
-    connected: boolean;
-    latestHandshakeAt: string | null;
-    rxBytes: number;
-    txBytes: number;
+    allowedIps: string;
+    isAdmin: boolean;
+    endpoint: string | null;
+    latestHandshake: number;
+    rx: number;
+    tx: number;
 };
 
 export type CreatedPeer = {
-    id: string;
     publicKey: string;
-    name: string;
-    address: string;
-    privateKey: string;
-    config: string;
+    allowedIps: string;
 };
 
 export class ApiError extends Error {
@@ -74,17 +70,19 @@ export function createPeer(name: string): Promise<CreatedPeer> {
     });
 }
 
-export function renamePeer(id: string, name: string): Promise<void> {
-    return request<void>(`/api/peers/${id}`, {
-        method: 'PATCH',
+export function deletePeer(publicKey: string): Promise<void> {
+    return request<void>('/api/peers', {
+        method: 'DELETE',
         headers: jsonHeaders,
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ publicKey }),
     });
 }
 
-export function deletePeer(id: string): Promise<void> {
-    return request<void>(`/api/peers/${id}`, {
-        method: 'DELETE',
+export function createPeerLink(publicKey: string): Promise<{ url: string }> {
+    return request<{ url: string }>('/api/peers/links', {
+        method: 'POST',
+        headers: jsonHeaders,
+        body: JSON.stringify({ publicKey, ttlSeconds: 86400 }),
     });
 }
 
