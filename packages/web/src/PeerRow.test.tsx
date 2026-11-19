@@ -1,17 +1,22 @@
-import { act, cleanup, render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
+import { act, cleanup, render as renderComponent, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import PeerRow from './PeerRow';
 import { json, link, peer } from '../test/fixtures';
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
+function render(children: ReactNode) {
+    return renderComponent(<ul>{children}</ul>);
+}
+
 describe('PeerRow', () => {
     it('shows C++ fields, admin flag, VPN IP and accessible SVG actions', () => {
         render(<PeerRow peer={peer} onChanged={vi.fn()} />);
         expect(screen.getByText('Телефон')).toBeInTheDocument();
         expect(screen.getByText('10.90.0.2')).toBeInTheDocument();
-        expect(screen.getByText('Администратор')).toBeInTheDocument();
-        expect(screen.getByText('Подключён')).toBeInTheDocument();
+        expect(screen.getByRole('img', { name: 'Администратор' })).toBeInTheDocument();
+        expect(screen.getByRole('img', { name: 'Подключён' })).toBeInTheDocument();
         expect(screen.getByText('1 КБ')).toBeInTheDocument();
         expect(screen.getByText('2 КБ')).toBeInTheDocument();
         const buttons = screen.getAllByRole('button');
@@ -22,9 +27,9 @@ describe('PeerRow', () => {
     it('ages status without a server refresh', () => {
         vi.useFakeTimers(); vi.setSystemTime(1000 * 1000);
         render(<PeerRow peer={{ ...peer, latestHandshake: 821 }} onChanged={vi.fn()} />);
-        expect(screen.getByText('Подключён')).toBeInTheDocument();
+        expect(screen.getByRole('img', { name: 'Подключён' })).toBeInTheDocument();
         act(() => { vi.advanceTimersByTime(10000); });
-        expect(screen.getByText('Не подключён')).toBeInTheDocument();
+        expect(screen.getByRole('img', { name: 'Не подключён' })).toBeInTheDocument();
     });
     it('opens a link modal and issues a new one-time link', async () => {
         const user = userEvent.setup();

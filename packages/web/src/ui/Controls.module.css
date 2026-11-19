@@ -35,3 +35,10 @@
     background: var(--surface-panel);
 }
 .input:disabled { background: var(--surface-subtle); }
+.compact { width: var(--control-height-compact); min-height: var(--control-height-compact); padding: var(--space-1); }
+.compact.secondary, .compact.danger { background: transparent; }
+.compact.secondary:hover:not(:disabled) { background: var(--surface-secondary); }
+.compact.danger:hover:not(:disabled) { background: var(--surface-danger); }
+@media (pointer: coarse) {
+    .compact { width: var(--control-height); min-height: var(--control-height); }
+}

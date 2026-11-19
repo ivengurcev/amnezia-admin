@@ -5,6 +5,7 @@ import { formatBytes, formatHandshake, formatVpnIp, isConnected } from './format
 import LinkResult from './LinkResult';
 import Button from './ui/Button';
 import IconButton from './ui/IconButton';
+import Icon from './ui/Icon';
 import Modal from './ui/Modal';
 import layout from './Layout.module.css';
 import styles from './PeerRow.module.css';
@@ -46,23 +47,29 @@ export default function PeerRow({ peer, onChanged }: Props) {
     }
 
     const connected = isConnected(peer.latestHandshake, now);
-    return <>
-        <article className={styles.row} aria-label={peer.name}>
-            <div className={styles.cell}><span className={styles.label}>Имя:</span><strong>{peer.name}</strong></div>
-            <div className={styles.cell}><span className={styles.label}>VPN-IP:</span><span>{formatVpnIp(peer.allowedIps)}</span></div>
-            <div className={styles.cell}><span className={styles.label}>Права:</span><span>{peer.isAdmin ? 'Администратор' : 'Пользователь'}</span></div>
-            <div className={styles.cell}><span className={styles.label}>Статус:</span>
-                <span className={`${styles.status} ${connected ? styles.online : ''}`}>{connected ? 'Подключён' : 'Не подключён'}</span>
+    return <li className={styles.row}>
+        <div className={styles.identity}>
+            <span className={`${styles.status} ${connected ? styles.online : ''}`}>
+                <Icon name={connected ? 'online' : 'offline'} label={connected ? 'Подключён' : 'Не подключён'} />
+            </span>
+            <div className={styles.name}>
+                <strong title={peer.name}>{peer.name}</strong>
+                <span className={peer.isAdmin ? styles.admin : styles.user}>
+                    <Icon name={peer.isAdmin ? 'admin' : 'user'} label={peer.isAdmin ? 'Администратор' : 'Пользователь'} />
+                </span>
             </div>
-            <div className={styles.cell}><span className={styles.label}>Handshake:</span><span>{formatHandshake(peer.latestHandshake)}</span></div>
-            <div className={styles.cell}><span className={styles.label}>RX:</span><span>{formatBytes(peer.rx)}</span></div>
-            <div className={styles.cell}><span className={styles.label}>TX:</span><span>{formatBytes(peer.tx)}</span></div>
-            <div className={styles.actions}>
-                <IconButton icon="link" label="Создать одноразовую ссылку" disabled={operation !== null} onClick={() => void issueLink()} />
-                <IconButton icon="delete" label="Удалить подключение" variant="danger" disabled={operation !== null} onClick={() => void handleDelete()} />
-            </div>
-            {error && <p className={styles.error} role="alert">{error}</p>}
-        </article>
+            <span className={styles.address}>{formatVpnIp(peer.allowedIps)}</span>
+        </div>
+        <div className={styles.metrics}>
+            <span className={styles.metric}><Icon name="clock" label="Последний handshake" />{peer.latestHandshake > 0 ? formatHandshake(peer.latestHandshake) : <span title="Нет данных">—</span>}</span>
+            <span className={styles.metric}><Icon name="download" label="RX" />{formatBytes(peer.rx)}</span>
+            <span className={styles.metric}><Icon name="upload" label="TX" />{formatBytes(peer.tx)}</span>
+        </div>
+        <div className={styles.actions}>
+            <IconButton compact icon="link" label="Создать одноразовую ссылку" disabled={operation !== null} onClick={() => void issueLink()} />
+            <IconButton compact icon="delete" label="Удалить подключение" variant="danger" disabled={operation !== null} onClick={() => void handleDelete()} />
+        </div>
+        {error && <p className={styles.error} role="alert">{error}</p>}
         {linkOpen && <Modal title="Одноразовая ссылка" busy={operation === 'link'} onClose={() => setLinkOpen(false)}>
             {url ? <LinkResult url={url} onClose={() => setLinkOpen(false)} /> : <>
                 {operation === 'link' && <p role="status">Получение ссылки…</p>}
@@ -73,5 +80,5 @@ export default function PeerRow({ peer, onChanged }: Props) {
                 </div>
             </>}
         </Modal>}
-    </>;
+    </li>;
 }

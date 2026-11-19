@@ -13,6 +13,8 @@ describe('App', () => {
         expect(screen.getByText('Загрузка подключений…')).toBeInTheDocument();
         resolve(json([peer]));
         expect(await screen.findByText('Телефон')).toBeInTheDocument();
+        expect(screen.getByRole('list', { name: 'Подключения' })).toBeInTheDocument();
+        expect(screen.queryByRole('table')).toBeNull();
     });
     it('shows an empty state and opens the create modal on demand', async () => {
         const user = userEvent.setup(); vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json([])));
