@@ -2,12 +2,12 @@
 * { box-sizing: border-box; }
 body {
     margin: 0;
-    min-width: 320px;
+    min-width: 0;
     min-height: 100vh;
     min-height: 100dvh;
     display: grid;
     place-items: center;
-    padding: var(--space-6);
+    padding: calc(var(--spacing) * 3);
     color: var(--color-text);
     background: var(--surface-page);
     font-family: var(--font-body);
@@ -18,7 +18,7 @@ body {
 main {
     width: 100%;
     max-width: var(--auth-width);
-    padding: var(--space-8);
+    padding: calc(var(--spacing) * 4);
     border: var(--border-width) solid var(--color-border);
     border-radius: var(--radius-lg);
     background: var(--surface-panel);
@@ -29,22 +29,22 @@ main {
 .icon {
     display: grid;
     place-items: center;
-    width: var(--space-16);
-    height: var(--space-16);
-    margin: 0 auto var(--space-5);
+    width: calc(var(--spacing) * 8);
+    height: calc(var(--spacing) * 8);
+    margin: 0 auto calc(var(--spacing) * 2.5);
     border-radius: var(--radius-md);
     background: var(--surface-subtle);
     font-size: var(--text-xl);
 }
-h1 { margin: 0 0 var(--space-3); font-size: var(--text-xl); }
-p { margin: 0 0 var(--space-6); color: var(--color-muted); }
+h1 { margin: 0 0 calc(var(--spacing) * 1.5); font-size: var(--text-xl); }
+p { margin: 0 0 calc(var(--spacing) * 3); color: var(--color-muted); }
 form { margin: 0; }
 button {
     width: 100%;
     min-height: var(--control-height);
     border: 0;
     border-radius: var(--radius-sm);
-    padding: var(--space-3) var(--space-4);
+    padding: calc(var(--spacing) * 1.5) calc(var(--spacing) * 2);
     color: var(--color-brand);
     background: var(--color-primary);
     font: inherit;
@@ -53,8 +53,8 @@ button {
 }
 button:hover { background: var(--color-primary-hover); }
 button:focus-visible { outline: var(--focus-width) solid var(--color-focus); outline-offset: var(--focus-offset); }
-small { display: block; margin-top: var(--space-4); color: var(--color-muted); font-size: var(--text-sm); }
-@media (max-width: 480px) {
-    body { padding: var(--space-3); }
-    main { padding: var(--space-6) var(--space-4); }
+small { display: block; margin-top: calc(var(--spacing) * 2); color: var(--color-muted); font-size: var(--text-sm); }
+@media (max-width: 30em) {
+    body { padding: calc(var(--spacing) * 1.5); }
+    main { padding: calc(var(--spacing) * 3) calc(var(--spacing) * 2); }
 }

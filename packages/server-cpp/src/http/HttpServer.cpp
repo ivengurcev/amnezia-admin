@@ -38,73 +38,8 @@ namespace {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Получение VPN-конфигурации</title>
-        <style>
-            * { box-sizing: border-box; }
-
-            body {
-                margin: 0;
-                min-height: 100vh;
-                display: grid;
-                place-items: center;
-                padding: 24px;
-                background: #f4f5f7;
-                color: #20242b;
-                font: 16px/1.5 system-ui, sans-serif;
-            }
-
-            main {
-                width: 100%;
-                max-width: 420px;
-                padding: 36px 28px;
-                background: #fff;
-                border: 1px solid #e5e7eb;
-                border-radius: 16px;
-                box-shadow: 0 8px 32px #00000008;
-                text-align: center;
-            }
-
-            .icon {
-                display: grid;
-                place-items: center;
-                width: 56px;
-                height: 56px;
-                margin: 0 auto 20px;
-                border-radius: 14px;
-                background: #f1f3f5;
-                font-size: 28px;
-            }
-
-            h1 {
-                margin: 0 0 12px;
-                font-size: 23px;
-                line-height: 1.3;
-            }
-
-            p {
-                margin: 0 0 24px;
-                color: #667085;
-            }
-
-            button {
-                width: 100%;
-                padding: 13px 20px;
-                border: 0;
-                border-radius: 9px;
-                background: #20242b;
-                color: #fff;
-                font: inherit;
-                font-weight: 600;
-                cursor: pointer;
-            }
-
-            button:hover { background: #383f49; }
-
-            small {
-                display: block;
-                margin-top: 16px;
-                color: #98a2b3;
-            }
-        </style>
+        <link rel="stylesheet" href="/assets/theme.css">
+        <link rel="stylesheet" href="/assets/setup.css">
     </head>
     <body>
     <main>
@@ -259,7 +194,17 @@ bool HttpServer::run() {
 void HttpServer::registerPublicRoutes() {
     // GET /setup/:token
     // POST /setup/:token/redeem
-    
+    publicServer_.Get(
+        R"(/assets/(theme|setup)\.css)",
+        [](const httplib::Request& req, httplib::Response& res) {
+            const auto name = req.matches[1].str();
+
+            res.set_file_content(
+                "/app/web/assets/" + name + ".css",
+                "text/css"
+            );
+        }
+    );
 
     publicServer_.Get(R"(/setup/([0-9a-f]{64}))",
         [this](const httplib::Request& req, httplib::Response& res) {

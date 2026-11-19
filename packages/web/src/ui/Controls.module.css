@@ -2,11 +2,11 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: var(--space-2);
+    gap: var(--spacing);
     min-height: var(--control-height);
     border: 0;
     border-radius: var(--radius-sm);
-    padding: var(--space-2) var(--space-4);
+    padding: var(--spacing) calc(var(--spacing) * 2);
     font-weight: var(--weight-medium);
     line-height: var(--line-height);
     cursor: pointer;
@@ -20,9 +20,9 @@
     outline: var(--focus-width) solid var(--color-focus);
     outline-offset: var(--focus-offset);
 }
-.icon { width: var(--control-height); padding: var(--space-2); flex-shrink: 0; }
+.icon { width: var(--control-height); padding: var(--spacing); flex-shrink: 0; }
 .icon svg { width: var(--icon-size); height: var(--icon-size); }
-.field { display: grid; min-width: 0; gap: var(--space-2); }
+.field { display: grid; min-width: 0; gap: var(--spacing); }
 .label { font-size: var(--text-sm); font-weight: var(--weight-medium); }
 .input {
     min-width: 0;
@@ -30,15 +30,17 @@
     min-height: var(--control-height);
     border: var(--border-width) solid var(--color-input-border);
     border-radius: var(--radius-sm);
-    padding: var(--space-2) var(--space-3);
+    padding: var(--spacing) calc(var(--spacing) * 1.5);
     color: var(--color-text);
     background: var(--surface-panel);
 }
 .input:disabled { background: var(--surface-subtle); }
-.compact { width: var(--control-height-compact); min-height: var(--control-height-compact); padding: var(--space-1); }
+.compact { width: var(--control-height-compact); min-height: var(--control-height-compact); padding: calc(var(--spacing) * 0.5); }
 .compact.secondary, .compact.danger { background: transparent; }
 .compact.secondary:hover:not(:disabled) { background: var(--surface-secondary); }
 .compact.danger:hover:not(:disabled) { background: var(--surface-danger); }
 @media (pointer: coarse) {
     .compact { width: var(--control-height); min-height: var(--control-height); }
 }
+
+.glyph { width: var(--icon-size); height: var(--icon-size); flex-shrink: 0; }
