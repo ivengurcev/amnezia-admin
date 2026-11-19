@@ -87,3 +87,14 @@ export function deletePeer(id: string): Promise<void> {
         method: 'DELETE',
     });
 }
+
+export function checkCredentials(
+    publicKey: string,
+    password: string,
+): Promise<{ name: string }> {
+    return request<{ name: string }>('/api/auth/login', {
+        method: 'POST',
+        headers: jsonHeaders,
+        body: JSON.stringify({ publicKey, password }),
+    });
+}

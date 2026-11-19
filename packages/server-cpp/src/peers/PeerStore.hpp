@@ -17,6 +17,7 @@ public:
     bool remove(const std::string& publicKey);
     std::optional<CreatedPeer> find(const std::string& publicKey);
     bool isAdminIp(const std::string& ip);
+    std::optional<CreatedPeer> findAdminByIp(const std::string& ip);
 
 private:
     SQLite::Database db_;

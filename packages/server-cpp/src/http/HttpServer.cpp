@@ -4,8 +4,10 @@
 #include <iostream>
 #include <string>
 #include "config/ClientConfig.hpp"
+#include "security/Password.hpp"
 #include <cstdint>
 #include <thread>
+#include <stdexcept>
 
 
 namespace {
@@ -296,6 +298,9 @@ void HttpServer::registerPublicRoutes() {
 }
 
 void HttpServer::registerAdminRoutes() {
+    if (!adminServer_.set_mount_point("/", "/app/web")) {
+        throw std::runtime_error{"Не найдены статические файлы React"};
+    }
     adminServer_.set_exception_handler(
         [](const httplib::Request&, httplib::Response& res, std::exception_ptr ep) {
             try {
@@ -320,20 +325,34 @@ void HttpServer::registerAdminRoutes() {
         }
     );
 
-    adminServer_.set_pre_request_handler(
+    adminServer_.set_pre_routing_handler(
         [this](const httplib::Request& req, httplib::Response& res) {
+            using Result = httplib::Server::HandlerResponse;
+
             if (req.path == "/health") {
-                return httplib::Server::HandlerResponse::Unhandled;
+                return Result::Unhandled;
             }
 
             if (!devMode_ && !store_.isAdminIp(req.remote_addr)) {
                 res.status = 404;
-                return httplib::Server::HandlerResponse::Handled;
+                return Result::Handled;
             }
 
-            // Peer административный, но пароль пока не проверен.
+            // Форма входа и её статические файлы.
+            if (req.path == "/api/auth/login" && req.method == "POST") {
+                return Result::Unhandled;
+            }
+
+            if (req.method == "GET" || req.method == "HEAD") {
+                if (req.path != "/api" &&
+                    !req.path.starts_with("/api/")) {
+                    return Result::Unhandled;
+                }
+            }
+
+            // Все остальные API пока закрыты.
             res.status = 403;
-            return httplib::Server::HandlerResponse::Handled;
+            return Result::Handled;
         }
     );
 
@@ -419,4 +438,87 @@ void HttpServer::registerAdminRoutes() {
             );
         }
     );    
+
+    adminServer_.Post("/api/auth/login",
+        [this](const httplib::Request& req, httplib::Response& res) {
+            res.set_header("Cache-Control", "no-store");
+
+            if (req.body.size() > 4096) {
+                res.status = 413;
+                return;
+            }
+
+            const auto data = nlohmann::json::parse(
+                req.body, nullptr, false
+            );
+
+            if (!data.is_object() ||
+                !data.contains("password") ||
+                !data["password"].is_string() ||
+                (devMode_ && (
+                    !data.contains("publicKey") ||
+                    !data["publicKey"].is_string()
+                ))) {
+                res.status = 400;
+                res.set_content(
+                    R"({"error":"Некорректный запрос"})",
+                    "application/json"
+                );
+                return;
+            }
+
+            const auto publicKey =
+                data["publicKey"].get<std::string>();
+
+            const auto password =
+                data["password"].get<std::string>();
+
+            if (publicKey.empty() || publicKey.size() > 128 ||
+                password.empty() || password.size() > 256) {
+                res.status = 400;
+                res.set_content(
+                    R"({"error":"Некорректные данные"})",
+                    "application/json"
+                );
+                return;
+            }
+
+            std::optional<CreatedPeer> peer;
+
+            if (devMode_) {
+                peer = store_.find(
+                    data["publicKey"].get<std::string>()
+                );
+            } else {
+                peer = store_.findAdminByIp(req.remote_addr);
+            }
+
+            // В production входить можно только от имени
+            // административного peer, которому принадлежит VPN-IP.
+            const bool allowed =
+                peer &&
+                peer->isAdmin &&
+                peer->passwordHash.has_value() &&
+                (devMode_ ||
+                peer->allowedIps == req.remote_addr + "/32");
+
+            if (!allowed ||
+                !verifyPassword(password, *peer->passwordHash)) {
+                res.status = 401;
+                res.set_content(
+                    R"({"error":"Неверный ключ или пароль"})",
+                    "application/json"
+                );
+                return;
+            }
+
+            res.set_content(
+                nlohmann::json{
+                    {"name", peer->name}
+                }.dump(),
+                "application/json"
+            );
+        }
+    );
+
 }

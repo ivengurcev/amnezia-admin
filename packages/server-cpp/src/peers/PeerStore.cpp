@@ -174,3 +174,45 @@ bool PeerStore::isAdminIp(const std::string& ip) {
 
     return query.executeStep();
 }
+
+std::optional<CreatedPeer> PeerStore::findAdminByIp(const std::string& ip) {
+    std::lock_guard lock{mutex_};
+
+    SQLite::Statement query{
+        db_,
+        R"(SELECT
+            private_key,
+            public_key,
+            allowed_ips,
+            name,
+            is_admin,
+            password_hash
+        FROM peers WHERE allowed_ips = ? AND is_admin = 1)"
+    };
+
+    query.bind(1, ip + "/32");
+
+    if (!query.executeStep()) {
+        return std::nullopt;
+    }
+
+    std::optional<std::string> passwordHash;
+
+    if (!query.getColumn(5).isNull()) {
+        passwordHash = query.getColumn(5).getString();
+    }
+
+    return CreatedPeer{
+        query.getColumn(0).getString(),
+        query.getColumn(1).getString(),
+        query.getColumn(2).getString(),
+        // Имя
+        query.getColumn(3).getString(),
+
+        // Флаг администратора
+        query.getColumn(4).getInt() != 0,
+
+        // Необязательный хеш
+        passwordHash    
+    };    
+}

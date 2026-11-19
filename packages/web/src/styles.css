@@ -316,3 +316,23 @@ input {
         grid-column: 2;
     }
 }
+
+
+.auth-page {
+    max-width: 460px;
+    padding-top: 64px;
+}
+
+.auth-form {
+    display: grid;
+    gap: 20px;
+    padding: 24px;
+}
+
+.auth-form .message {
+    margin: 0;
+}
+
+.auth-form button {
+    width: 100%;
+}

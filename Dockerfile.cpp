@@ -1,3 +1,22 @@
+
+# React build
+FROM node:24-alpine AS web-builder
+
+WORKDIR /app
+
+RUN corepack enable
+
+COPY package.json yarn.lock .yarnrc.yml ./
+COPY packages/web/package.json ./packages/web/package.json
+
+RUN yarn install --immutable
+
+COPY packages/web/ ./packages/web/
+
+RUN yarn workspace @amnezia-admin/web build
+
+
+# C++ build
 FROM amneziavpn/amneziawg-go:3.1.20260828 AS builder
 
 RUN apk add --no-cache \
@@ -19,11 +38,13 @@ RUN --mount=type=cache,target=/app/build,sharing=locked \
     && cp build/amnezia-admin /tmp/amnezia-admin
 
 
+# Runtime
 FROM amneziavpn/amneziawg-go:3.1.20260828
 
 RUN apk add --no-cache libstdc++ libgcc libcrypto3
 
 COPY --from=builder /tmp/amnezia-admin /usr/local/bin/amnezia-admin
+COPY --from=web-builder /app/packages/web/dist/ /app/web/
 
 COPY docker/entrypoint.dev.sh /usr/local/bin/entrypoint.sh
 
