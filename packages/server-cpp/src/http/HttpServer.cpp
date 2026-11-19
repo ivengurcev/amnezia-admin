@@ -402,23 +402,51 @@ void HttpServer::registerAdminRoutes() {
         res.set_content(R"({"listenPort":)" + std::to_string(port) + "}", "application/json");
     });
 
-    adminServer_.Get("/api/peers", [this](const httplib::Request&, httplib::Response& res) {
-        auto peers = awg_.getPeersInfo();
-        nlohmann::json data = nlohmann::json::array();
 
-        for (const auto& peer : peers) {
-            data.push_back({
-                {"publicKey", peer.publicKey},
-                {"endpoint", peer.endpoint},
-                {"allowedIps", peer.allowedIps},
-                {"latestHandshake", peer.latestHandshake},
-                {"rx", peer.rx},
-                {"tx", peer.tx}
-            });
+    adminServer_.Get("/api/peers",
+        [this](const httplib::Request&, httplib::Response& res) {
+            const auto storedPeers = store_.list();
+            const auto activePeers = awg_.getPeersInfo();
+
+            nlohmann::json result = nlohmann::json::array();
+
+            for (const auto& stored : storedPeers) {
+                nlohmann::json item = {
+                    {"publicKey", stored.publicKey},
+                    {"name", stored.name},
+                    {"allowedIps", stored.allowedIps},
+                    {"isAdmin", stored.isAdmin},
+                    {"endpoint", nullptr},
+                    {"latestHandshake", 0},
+                    {"rx", 0},
+                    {"tx", 0}
+                };
+
+                const auto it = std::find_if(
+                    activePeers.begin(),
+                    activePeers.end(),
+                    [&](const PeerInfo& peer) {
+                        return peer.publicKey == stored.publicKey;
+                    }
+                );
+
+                if (it != activePeers.end()) {
+                    if (!it->endpoint.empty() &&
+                        it->endpoint != "(none)") {
+                        item["endpoint"] = it->endpoint;
+                    }
+
+                    item["latestHandshake"] = it->latestHandshake;
+                    item["rx"] = it->rx;
+                    item["tx"] = it->tx;
+                }
+
+                result.push_back(std::move(item));
+            }
+
+            res.set_content(result.dump(), "application/json");
         }
-
-        res.set_content(data.dump(), "application/json");
-    });
+    );
 
     adminServer_.Post("/api/peers", [this](const httplib::Request&, httplib::Response& res) {
         auto created = peer_.createPeer();
