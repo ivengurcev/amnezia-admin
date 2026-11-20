@@ -41,14 +41,30 @@ RUN --mount=type=cache,target=/app/build,sharing=locked \
 # Runtime
 FROM amneziavpn/amneziawg-go:3.1.20260828
 
-RUN apk add --no-cache libstdc++ libgcc libcrypto3
+RUN apk add --no-cache \
+    libstdc++ \
+    libgcc \
+    libcrypto3 \
+    libssl3 \
+    python3 \
+    py3-pip \
+    ca-certificates \
+    && python3 -m venv /opt/certbot \
+    && /opt/certbot/bin/pip install --no-cache-dir certbot==5.10.0
+
+ENV PATH="/opt/certbot/bin:$PATH"
 
 COPY --from=builder /tmp/amnezia-admin /usr/local/bin/amnezia-admin
 COPY --from=web-builder /app/packages/web/dist/ /app/web/
 
 COPY docker/entrypoint.dev.sh /usr/local/bin/entrypoint.sh
+COPY docker/entrypoint.prod.sh /usr/local/bin/entrypoint.prod.sh
+COPY docker/tls-renewed.sh /usr/local/bin/tls-renewed.sh
 
-RUN chmod +x /usr/local/bin/entrypoint.sh
+RUN chmod +x \
+    /usr/local/bin/entrypoint.sh \
+    /usr/local/bin/entrypoint.prod.sh \
+    /usr/local/bin/tls-renewed.sh
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 

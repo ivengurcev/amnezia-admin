@@ -2,6 +2,7 @@
 
 #include <httplib.h>
 #include <string>
+#include <memory>
 
 #include "awg/AwgDriver.hpp"
 #include "peers/PeerService.hpp"
@@ -30,7 +31,7 @@ public:
     void registerAdminRoutes();
 
 private:
-    httplib::Server publicServer_;
+    std::unique_ptr<httplib::Server> publicServer_;
     httplib::Server adminServer_;
     std::string host_;
     int port_;

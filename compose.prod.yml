@@ -1,0 +1,46 @@
+
+services:
+  amnezia-admin:
+    build:
+      context: .
+      dockerfile: Dockerfile.cpp
+      args:
+        BUILD_TYPE: Release
+
+    restart: unless-stopped
+    init: true
+
+    command: ["/usr/local/bin/entrypoint.prod.sh"]
+
+    environment:
+      ADMIN_DEV_MODE: "0"
+      PUBLIC_IP: ${PUBLIC_IP}
+      ACME_EMAIL: ${ACME_EMAIL}
+      AWG_INTERFACE: awg0
+      AWG_PORT: ${AWG_PORT}
+      AWG_ENDPOINT_HOST: ${PUBLIC_IP}
+      SETUP_BASE_URL: https://${PUBLIC_IP}
+      TLS_CERT_FILE: /data/letsencrypt/live/${PUBLIC_IP}/fullchain.pem
+      TLS_KEY_FILE: /data/letsencrypt/live/${PUBLIC_IP}/privkey.pem
+
+    cap_add:
+      - NET_ADMIN
+
+    devices:
+      - /dev/net/tun:/dev/net/tun
+
+    sysctls:
+      net.ipv4.ip_forward: "1"
+
+    ports:
+      - "80:80/tcp"
+      - "443:3000/tcp"
+      - "${AWG_PORT}:${AWG_PORT}/udp"
+
+    volumes:
+      - amnezia-admin-data:/data
+
+    stop_grace_period: 10s
+
+volumes:
+  amnezia-admin-data:

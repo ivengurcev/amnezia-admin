@@ -10,7 +10,7 @@ FetchContent_Declare(
     GIT_TAG v0.58.0
     GIT_SHALLOW TRUE
 )
-
+set(HTTPLIB_REQUIRE_OPENSSL ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(httplib)
 
 FetchContent_Declare(
@@ -58,6 +58,7 @@ target_link_libraries(amnezia-admin PRIVATE
     nlohmann_json::nlohmann_json 
     SQLiteCpp
     OpenSSL::Crypto
+    OpenSSL::SSL
 )
 target_include_directories(amnezia-admin PRIVATE src)
 

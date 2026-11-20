@@ -19,3 +19,7 @@ node_modules
 /packages/web/dist/
 /packages/server-cpp/build/
 /packages/server-cpp/.cache/
+
+.env
+.env.*
+!.env.example

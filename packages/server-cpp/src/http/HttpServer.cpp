@@ -10,6 +10,8 @@
 #include <string_view>
 #include <thread>
 #include <stdexcept>
+#include <memory>
+#include <cstdlib>
 
 
 namespace {
@@ -154,9 +156,36 @@ HttpServer::HttpServer(
     setupBaseUrl_(setupBaseUrl),
     devMode_(devMode)     
 {
-    publicServer_.set_socket_options([](auto sock) {
-        httplib::set_socket_opt(sock, SOL_SOCKET, SO_REUSEADDR, 1);
-    });    
+    if (devMode_) {
+        publicServer_ = std::make_unique<httplib::Server>();
+    } else {
+        const char* cert = std::getenv("TLS_CERT_FILE");
+        const char* key = std::getenv("TLS_KEY_FILE");
+
+        if (!cert || !*cert || !key || !*key) {
+            throw std::runtime_error{
+                "TLS_CERT_FILE and TLS_KEY_FILE are required"
+            };
+        }
+
+        publicServer_ = std::make_unique<httplib::SSLServer>(cert, key);
+
+        if (!publicServer_->is_valid()) {
+            throw std::runtime_error{
+                "Не удалось загрузить TLS-сертификат"
+            };
+        }
+    }
+
+    publicServer_->set_socket_options([](auto sock) {
+        httplib::set_socket_opt(
+            sock,
+            SOL_SOCKET,
+            SO_REUSEADDR,
+            1
+        );
+    });
+
 }
 
 
@@ -172,7 +201,7 @@ bool HttpServer::run() {
         return false;
     }
 
-    if (!publicServer_.bind_to_port(host_, port_)) {
+    if (!publicServer_->bind_to_port(host_, port_)) {
         std::cerr << "Failed to bind public server\n";
         return false;
     }
@@ -183,7 +212,7 @@ bool HttpServer::run() {
         }
     }};
 
-    const bool publicOk = publicServer_.listen_after_bind();
+    const bool publicOk = publicServer_->listen_after_bind();
 
     adminServer_.stop();
     adminThread.join();
@@ -194,7 +223,7 @@ bool HttpServer::run() {
 void HttpServer::registerPublicRoutes() {
     // GET /setup/:token
     // POST /setup/:token/redeem
-    publicServer_.Get(
+    publicServer_->Get(
         R"(/assets/(theme|setup)\.css)",
         [](const httplib::Request& req, httplib::Response& res) {
             const auto name = req.matches[1].str();
@@ -206,7 +235,7 @@ void HttpServer::registerPublicRoutes() {
         }
     );
 
-    publicServer_.Get(R"(/setup/([0-9a-f]{64}))",
+    publicServer_->Get(R"(/setup/([0-9a-f]{64}))",
         [this](const httplib::Request& req, httplib::Response& res) {
             const auto token = req.matches[1].str();
 
@@ -225,7 +254,7 @@ void HttpServer::registerPublicRoutes() {
         }
     );
 
-    publicServer_.Post(R"(/setup/([0-9a-f]{64})/redeem)",
+    publicServer_->Post(R"(/setup/([0-9a-f]{64})/redeem)",
         [this](const httplib::Request& req, httplib::Response& res) {
             const auto token = req.matches[1].str();
 
