@@ -1,11 +1,7 @@
 
 services:
   amnezia-admin:
-    build:
-      context: .
-      dockerfile: Dockerfile.cpp
-      args:
-        BUILD_TYPE: Release
+    image: ghcr.io/ivengurcev/amnezia-admin:v0.1.0
 
     restart: unless-stopped
     init: true
