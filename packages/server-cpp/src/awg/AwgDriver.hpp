@@ -74,7 +74,6 @@ public:
     explicit AwgDriver(const std::string& interfaceName);
 
     int getListenPort() const;
-    std::vector<std::string> listPeers() const;
     std::vector<PeerInfo> getPeersInfo() const;
     void addPeer(
         const std::string& publicKey,

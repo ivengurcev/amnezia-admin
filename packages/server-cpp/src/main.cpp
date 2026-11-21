@@ -5,8 +5,6 @@
 #include "peers/PeerStore.hpp"
 #include "links/LinkService.hpp"
 #include "cli/Cli.hpp"
-// #include "net/Ipv4.hpp"
-// #include "process/ProcessRunner.hpp"
 #include "awg/AwgDriver.hpp"
 #include <iostream>
 #include <cstdlib>
@@ -54,7 +52,6 @@ std::string getInterfaceIp(const std::string& interfaceName) {
 int main(int argc, char* argv[]) {
     std::signal(SIGPIPE, SIG_IGN);
     std::cout << std::unitbuf;
-    // Внутри main()
     const char* interfaceName = std::getenv("AWG_INTERFACE");
 
     if (argc > 1) {
@@ -69,11 +66,9 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Start" << '\n';
     AwgDriver awg{interfaceName};
-    // PeerStore store{"/data/peers.json"};
     PeerStore store{"/data/amnezia-admin.db"};
     PeerService peer{awg, store};
     LinkService links{"/data/amnezia-admin.db"};
-    // HttpServer server{"0.0.0.0", 3000, awg, peer};
     const char* endpointHost = std::getenv("AWG_ENDPOINT_HOST");
     const char* setupBaseUrl = std::getenv("SETUP_BASE_URL");
     const char* devEnv = std::getenv("ADMIN_DEV_MODE");
@@ -98,14 +93,9 @@ int main(int argc, char* argv[]) {
         devMode
     };
 
-    // std::cout << process::runCommand("awg", {"--version"});
-    // auto peers = awg.listPeers();
     peer.restorePeers();
 
 
-    // auto ip = net::ipv4ToInt("10.90.0.1");
-    // std::cout << net::intToIpv4(ip) << '\n';
-    // std::cerr << "Peers: " << peers.size() << '\n';
     if(!server.run()) {
         std::cerr << "Не получилось стартовать" << '\n';
         return 1;

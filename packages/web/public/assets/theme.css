@@ -34,7 +34,6 @@
     --text-lg: calc(var(--text-base) * var(--type-scale));
     --text-xl: calc(var(--text-lg) * var(--type-scale) * var(--type-scale));
     --text-title: clamp(var(--text-xl), 4vw, calc(var(--text-xl) * var(--type-scale) * var(--type-scale) * var(--type-scale)));
-    --weight-normal: 400;
     --weight-medium: 600;
     --weight-bold: 700;
     --line-height: 1.5;
@@ -44,7 +43,6 @@
     --radius-sm: var(--radius);
     --radius-md: calc(var(--radius) * 1.5);
     --radius-lg: calc(var(--radius) * 2);
-    --radius-round: 50%;
     --border-width: calc(var(--spacing) / 8);
     --focus-width: calc(var(--border-width) * 3);
     --focus-offset: calc(var(--border-width) * 2);

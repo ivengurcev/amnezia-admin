@@ -14,19 +14,6 @@ int AwgDriver::getListenPort() const {
     );
 }
 
-std::vector<std::string> AwgDriver::listPeers() const {
-    std::istringstream stream{
-        process::runCommand("awg", {"show", interfaceName_, "peers"})
-    };
-    std::string line;
-    std::vector<std::string> result;
-    while (std::getline(stream, line)) {
-        // line содержит очередной публичный ключ
-        result.push_back(line);
-    }
-    return result;
-}
-
 std::vector<PeerInfo> AwgDriver::getPeersInfo() const {
     std::istringstream linesStream{ process::runCommand("awg", {"show", interfaceName_, "dump"})};
     std::string line;

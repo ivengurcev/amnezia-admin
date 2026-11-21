@@ -289,7 +289,6 @@ namespace process {
         auto [outRead, outWrite] = createPipe();
         auto [errorRead, errorWrite] = createPipe();
         auto [inputRead, inputWrite] = createPipe();    // stdin
-        // std::cout << "Pipe создан\n";
         SpawnActions actions;
 
         setupFD(actions, outRead, outWrite, STDOUT_FILENO, "stdout", "readFd", "writeFd");

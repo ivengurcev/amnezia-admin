@@ -604,11 +604,6 @@ void HttpServer::registerAdminRoutes() {
             );
 
             res.set_content(
-                nlohmann::json{{"name", peer->name}}.dump(),
-                "application/json"
-            );
-
-            res.set_content(
                 nlohmann::json{
                     {"name", peer->name}
                 }.dump(),
