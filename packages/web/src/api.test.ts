@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, checkCredentials, createPeer, createPeerLink, deletePeer, getSession, listPeers, logout } from './api';
+import { ApiError, checkCredentials, createPeer, createPeerLink, deletePeer, getAuthMode, getSession, listPeers, logout } from './api';
 
 const peer = {
     publicKey: 'key+/=', name: 'Телефон', allowedIps: '10.90.0.2/32',
@@ -38,6 +38,25 @@ describe('C++ API', () => {
         expect(fetchMock).toHaveBeenCalledWith('/api/peers/links', {
             method: 'POST', headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ publicKey: peer.publicKey, ttlSeconds: 86400 }),
+        });
+    });
+    it.each([true, false])('loads authentication mode %s', async publicKeyRequired => {
+        const fetchMock = vi.fn().mockResolvedValue(json({ publicKeyRequired }));
+        vi.stubGlobal('fetch', fetchMock);
+        await expect(getAuthMode()).resolves.toEqual({ publicKeyRequired });
+        expect(fetchMock).toHaveBeenCalledWith('/api/auth/mode', undefined);
+    });
+    it.each([null, {}, { publicKeyRequired: 'false' }])('rejects invalid authentication mode %j', async mode => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json(mode)));
+        await expect(getAuthMode()).rejects.toThrow('Сервер вернул некорректный режим авторизации');
+    });
+    it('sends only password for production login', async () => {
+        const fetchMock = vi.fn().mockResolvedValue(json({ name: 'Admin' }));
+        vi.stubGlobal('fetch', fetchMock);
+        await checkCredentials(undefined, 'secret');
+        expect(fetchMock).toHaveBeenCalledWith('/api/auth/login', {
+            method: 'POST', headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ password: 'secret' }),
         });
     });
     it('preserves cookie-session auth endpoints and request bodies', async () => {

@@ -9,7 +9,8 @@ describe('cookie session', () => {
     it('restores the session and logs out through the existing API', async () => {
         const user = userEvent.setup();
         const fetchMock = vi.fn().mockResolvedValueOnce(json({ name: 'Admin', publicKey: peer.publicKey }))
-            .mockResolvedValueOnce(json([])).mockResolvedValueOnce(new Response(null, { status: 204 }));
+            .mockResolvedValueOnce(json([])).mockResolvedValueOnce(new Response(null, { status: 204 }))
+            .mockResolvedValueOnce(json({ publicKeyRequired: true }));
         vi.stubGlobal('fetch', fetchMock);
         render(<Root />);
         await screen.findByText('Подключений пока нет');
@@ -20,24 +21,26 @@ describe('cookie session', () => {
     it('shows login after 401 and sends credentials before loading connections', async () => {
         const user = userEvent.setup();
         const fetchMock = vi.fn().mockResolvedValueOnce(new Response(null, { status: 401 }))
+            .mockResolvedValueOnce(json({ publicKeyRequired: true }))
             .mockResolvedValueOnce(json({ name: 'Admin' })).mockResolvedValueOnce(json([]));
         vi.stubGlobal('fetch', fetchMock);
         render(<Root />);
         await screen.findByRole('heading', { name: 'Вход' });
-        await user.type(screen.getByLabelText('Публичный ключ'), '  key+/=  ');
+        await user.type(await screen.findByLabelText('Публичный ключ'), '  key+/=  ');
         await user.type(screen.getByLabelText('Пароль'), 'secret');
         await user.click(screen.getByRole('button', { name: 'Войти' }));
         expect(await screen.findByText('Подключений пока нет')).toBeInTheDocument();
-        expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/auth/login', expect.objectContaining({ body: JSON.stringify({ publicKey: 'key+/=', password: 'secret' }) }));
+        expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/auth/login', expect.objectContaining({ body: JSON.stringify({ publicKey: 'key+/=', password: 'secret' }) }));
         expect(screen.queryByLabelText('Пароль')).toBeNull();
     });
     it('retains the login form on invalid credentials', async () => {
         const user = userEvent.setup();
         vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(new Response(null, { status: 401 }))
+            .mockResolvedValueOnce(json({ publicKeyRequired: true }))
             .mockResolvedValueOnce(json({ error: 'Ошибка авторизации' }, 401)));
         render(<Root />);
         await screen.findByRole('heading', { name: 'Вход' });
-        await user.type(screen.getByLabelText('Публичный ключ'), 'key');
+        await user.type(await screen.findByLabelText('Публичный ключ'), 'key');
         await user.type(screen.getByLabelText('Пароль'), 'wrong');
         await user.click(screen.getByRole('button', { name: 'Войти' }));
         expect(await screen.findByRole('alert')).toHaveTextContent('Ошибка авторизации');

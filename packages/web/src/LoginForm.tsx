@@ -1,7 +1,8 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { checkCredentials } from './api';
+import { checkCredentials, getAuthMode } from './api';
+import type { AuthMode } from './api';
 import Shell from './Shell';
 import Button from './ui/Button';
 import Input from './ui/Input';
@@ -15,21 +16,41 @@ type LoginFormProps = {
 
 
 export default function LoginForm({ onLogin }: LoginFormProps) {
+    const [mode, setMode] = useState<AuthMode | null>(null);
+    const [modeError, setModeError] = useState('');
+    const [modeAttempt, setModeAttempt] = useState(0);
     const [publicKey, setPublicKey] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
+    useEffect(() => {
+        let cancelled = false;
+        setModeError('');
+
+        getAuthMode()
+            .then(nextMode => {
+                if (!cancelled) setMode(nextMode);
+            })
+            .catch((err: unknown) => {
+                if (!cancelled) {
+                    setModeError(err instanceof Error ? err.message : 'Не удалось получить режим авторизации');
+                }
+            });
+
+        return () => { cancelled = true; };
+    }, [modeAttempt]);
+
     async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
-        if (loading) return;
+        if (loading || !mode) return;
         setError('');
         setLoading(true);
 
         try {
             await checkCredentials(
-                publicKey.trim(),
+                mode.publicKeyRequired ? publicKey.trim() : undefined,
                 password,
             );
 
@@ -54,14 +75,19 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
                     <h1>Вход</h1>
                 </div>
             </div>
-            <form className={`${layout.form} ${styles.form}`} onSubmit={handleSubmit}>
-                <Input label="Публичный ключ" autoComplete="username" value={publicKey}
-                    onChange={event => setPublicKey(event.target.value)} disabled={loading} required />
+            {mode === null ? <div className={`${layout.form} ${styles.form}`}>
+                {modeError ? <>
+                    <p className={layout.errorText} role="alert">{modeError}</p>
+                    <Button onClick={() => setModeAttempt(attempt => attempt + 1)}>Повторить</Button>
+                </> : <p role="status">Загрузка режима входа…</p>}
+            </div> : <form className={`${layout.form} ${styles.form}`} onSubmit={handleSubmit}>
+                {mode.publicKeyRequired && <Input label="Публичный ключ" autoComplete="username" value={publicKey}
+                    onChange={event => setPublicKey(event.target.value)} disabled={loading} required />}
                 <Input label="Пароль" type="password" autoComplete="current-password" value={password}
                     onChange={event => setPassword(event.target.value)} disabled={loading} required />
                 {error && <p className={layout.errorText} role="alert">{error}</p>}
                 <Button variant="primary" type="submit" disabled={loading}>{loading ? 'Проверка…' : 'Войти'}</Button>
-            </form>
+            </form>}
         </section>
     </Shell>;
 }

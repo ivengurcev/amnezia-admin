@@ -86,8 +86,26 @@ export function createPeerLink(publicKey: string): Promise<{ url: string }> {
     });
 }
 
+export type AuthMode = {
+    publicKeyRequired: boolean;
+};
+
+export async function getAuthMode(): Promise<AuthMode> {
+    const mode = await request<unknown>('/api/auth/mode');
+
+    if (
+        !mode || typeof mode !== 'object' ||
+        !('publicKeyRequired' in mode) ||
+        typeof mode.publicKeyRequired !== 'boolean'
+    ) {
+        throw new ApiError('Сервер вернул некорректный режим авторизации');
+    }
+
+    return { publicKeyRequired: mode.publicKeyRequired };
+}
+
 export function checkCredentials(
-    publicKey: string,
+    publicKey: string | undefined,
     password: string,
 ): Promise<{ name: string }> {
     return request<{ name: string }>('/api/auth/login', {
