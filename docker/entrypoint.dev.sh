@@ -81,6 +81,19 @@ awg set "$INTERFACE" \
 ip addr replace "$ADDRESS" dev "$INTERFACE"
 ip link set up dev "$INTERFACE"
 
+VPN_SUBNET="$(ip -4 route show dev "$INTERFACE" scope link | awk 'NR == 1 {print $1}')"
+WAN_IF="$(ip -4 route show default | awk 'NR == 1 {print $5}')"
+
+if [ -z "$VPN_SUBNET" ] || [ -z "$WAN_IF" ]; then
+    echo "Cannot determine VPN subnet or outbound interface" >&2
+    exit 1
+fi
+
+iptables -t nat -C POSTROUTING \
+    -s "$VPN_SUBNET" -o "$WAN_IF" -j MASQUERADE 2>/dev/null ||
+iptables -t nat -A POSTROUTING \
+    -s "$VPN_SUBNET" -o "$WAN_IF" -j MASQUERADE
+
 echo
 echo "=== AWG ==="
 awg show "$INTERFACE"

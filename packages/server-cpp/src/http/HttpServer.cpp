@@ -347,6 +347,7 @@ void HttpServer::registerAdminRoutes() {
             // Эти маршруты сами управляют авторизацией.
             if ((req.path == "/api/auth/login" && req.method == "POST") ||
                 (req.path == "/api/auth/me" && req.method == "GET") ||
+                (req.path == "/api/auth/mode" && req.method == "GET") ||
                 (req.path == "/api/auth/logout" && req.method == "POST")) {
                 return Result::Unhandled;
             }
@@ -368,6 +369,17 @@ void HttpServer::registerAdminRoutes() {
             }
 
             return Result::Unhandled;
+        }
+    );
+
+    adminServer_.Get("/api/auth/mode",
+        [this](const httplib::Request&, httplib::Response& res) {
+            res.set_content(
+                nlohmann::json{
+                    {"publicKeyRequired", devMode_}
+                }.dump(),
+                "application/json"
+            );
         }
     );
 
